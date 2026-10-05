@@ -1,23 +1,18 @@
 import type { NextFunction, RequestHandler } from "express";
 import { AppError } from "../utils/app-error";
+import { z } from "zod";
 
-export const validateLogin: RequestHandler = (req, _res, next) => {
-    const { identifier, password } = req.body ?? {};
-
-    if (
-        typeof identifier !== "string" ||
-        identifier.trim() === "" ||
-        typeof password !== "string" ||
-        password.length === 0
-    ) {
-        throw new AppError(
-            "Identifier and password are required",
-            400,
-            "VALIDATION_ERROR"
-        );
-    }
-
-    next();
+export const validateBody = (schema: z.ZodType): RequestHandler => {
+    const middleware: RequestHandler = (req, _res, next) => {
+        const result = schema.safeParse(req.body);
+        if (!result.success) {
+            
+            throw new AppError("Invalid request body", 400, "VALIDATION_ERROR");
+        }
+        req.body = result.data;
+        next();
+    };
+    return middleware;
 };
 
 export const validateRefreshTokenCookie : RequestHandler = (
