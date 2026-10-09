@@ -1,9 +1,20 @@
 import type { Request, Response } from "express";
-import { login, logoutService, refreshTokenService } from "./auth.services";
-import { AppError } from "../../utils/app-error";
+import { login, logoutService, refreshTokenService, registerService } from "./auth.services";
 import { ApiResponse } from "../../types/apiResponse";
-import { env } from "../../config/env";
-import { AuthenticatedUser } from "../../types/auth";
+import { env } from "../../config/env"
+type User = {
+    id: bigint | string;
+    name: string;
+    email: string;
+    phone: string | null;
+    emailVerified: boolean;
+
+}
+
+type LoginResponse = {
+    accessToken: string;
+    user: User;
+}
 export async function loginController(
     req: Request,
     res: Response
@@ -18,7 +29,7 @@ export async function loginController(
         sameSite: "strict",
         maxAge: 30 * 24 * 60 * 60 * 1000,
     });
-    const response: ApiResponse<{ accessToken: string; user: any }> = {
+    const response: ApiResponse<LoginResponse> = {
         success: true,
         message: "Login successful",
         data: {
@@ -68,4 +79,36 @@ export async function logoutController(req: Request, res: Response) {
         sameSite: "strict",
     });
     res.status(204).send();
+}
+
+export async function registerController(
+    req: Request,
+    res: Response
+) {
+    const { name, email, phone, password } = req.body;
+
+    const createdUser = await registerService(
+        name,
+        email,
+        phone ?? null,
+        password
+    );
+
+    const response: ApiResponse<{
+        user: User;
+    }> = {
+        success: true,
+        message: "Account created successfully. Please verify your email.",
+        data: {
+            user: {
+                id: String(createdUser.id),
+                name: createdUser.name,
+                email: createdUser.email,
+                emailVerified: Boolean(createdUser.email_isverified),
+                phone: createdUser.phone ?? null,
+            },
+        },
+    };
+
+    res.status(201).json(response);
 }

@@ -45,3 +45,27 @@ export async function revokeAuthSession(sessionId: bigint, userId: bigint) {
     );
     return result.rowCount === 1;
 }
+
+export async function findUserByEmail(email: string) {
+    const result = await pool.query(
+        "SELECT id FROM users WHERE email = $1 LIMIT 1",
+        [email]
+    );
+    return result.rows[0] ?? null;
+}
+
+export async function findUserByPhone(phone: string) {
+    const result = await pool.query(
+        "SELECT id FROM users WHERE phone = $1 LIMIT 1",
+        [phone]
+    );
+    return result.rows[0] ?? null;
+}
+
+export async function createUser(name: string, email: string, phone: string | null, passwordHash: string) {
+    const result = await pool.query(
+        "INSERT INTO users (name, email, phone, password_hash, email_isverified) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, phone, email_isverified",
+        [name, email, phone, passwordHash, false]
+    );
+    return result.rows[0] ?? null;
+}
