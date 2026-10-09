@@ -3,22 +3,37 @@ import { AppError } from "../utils/app-error";
 import { z } from "zod";
 
 export const validateBody = (schema: z.ZodType): RequestHandler => {
-    const middleware: RequestHandler = (req, _res, next) => {
+    return (req, _res, next) => {
         const result = schema.safeParse(req.body);
+
         if (!result.success) {
-            
-            throw new AppError("Invalid request body", 400, "VALIDATION_ERROR");
+            const fields: Record<string, string> = {};
+
+            for (const issue of result.error.issues) {
+                const field = issue.path[0];
+
+                if (typeof field === "string" && !(field in fields)) {
+                    fields[field] = issue.message;
+                }
+            }
+
+            throw new AppError(
+                "Invalid request data.",
+                400,
+                "VALIDATION_ERROR",
+                fields,
+            );
         }
+
         req.body = result.data;
         next();
     };
-    return middleware;
 };
 
-export const validateRefreshTokenCookie : RequestHandler = (
-    req ,
-    _res ,
-    next : NextFunction
+export const validateRefreshTokenCookie: RequestHandler = (
+    req,
+    _res,
+    next: NextFunction
 ) => {
     const refreshToken = req.cookies?.refreshToken;
 
