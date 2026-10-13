@@ -54,7 +54,7 @@ async function getUserId(): Promise<string> {
     return result.rows[0].id.toString();
 }
 
-describe("POST /auth/logout", () => {
+describe("POST /api/v1/auth/logout", () => {
     beforeAll(async () => {
         await cleanupTestData();
         await createTestUser();
@@ -81,7 +81,7 @@ describe("POST /auth/logout", () => {
         const agent = request.agent(app);
 
         const loginResponse = await agent
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 identifier: TEST_EMAIL,
                 password: TEST_PASSWORD,
@@ -107,7 +107,7 @@ describe("POST /auth/logout", () => {
         expect(sessionBefore.rows[0].revoked_at).toBeNull();
 
         const logoutResponse = await agent
-            .post("/auth/logout")
+            .post("/api/v1/auth/logout")
             .set("Authorization", `Bearer ${accessToken}`);
 
         expect(logoutResponse.status).toBe(204);
@@ -133,14 +133,14 @@ describe("POST /auth/logout", () => {
 
     it("should reject logout without an access token", async () => {
         const response = await request(app)
-            .post("/auth/logout");
+            .post("/api/v1/auth/logout");
 
         expect(response.status).toBe(401);
     });
 
     it("should reject logout with an invalid access token", async () => {
         const response = await request(app)
-            .post("/auth/logout")
+            .post("/api/v1/auth/logout")
             .set("Authorization", "Bearer invalid-access-token");
 
         expect(response.status).toBe(401);
@@ -150,7 +150,7 @@ describe("POST /auth/logout", () => {
         const agent = request.agent(app);
 
         const loginResponse = await agent
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 identifier: TEST_EMAIL,
                 password: TEST_PASSWORD,
@@ -161,13 +161,13 @@ describe("POST /auth/logout", () => {
         const accessToken = loginResponse.body.data.accessToken;
 
         const logoutResponse = await agent
-            .post("/auth/logout")
+            .post("/api/v1/auth/logout")
             .set("Authorization", `Bearer ${accessToken}`);
 
         expect(logoutResponse.status).toBe(204);
 
         const refreshResponse = await agent
-            .post("/auth/refresh");
+            .post("/api/v1/auth/refresh");
 
         expect(refreshResponse.status).toBe(401);
         expect(refreshResponse.body.error.code).toBe(

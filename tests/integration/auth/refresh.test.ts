@@ -55,7 +55,7 @@ async function getUserId(): Promise<string> {
     return result.rows[0].id.toString();
 }
 
-describe("POST /auth/refresh", () => {
+describe("POST /api/v1/auth/refresh", () => {
     beforeAll(async () => {
         await createTestUser();
     });
@@ -79,7 +79,7 @@ describe("POST /auth/refresh", () => {
         const agent = request.agent(app);
 
         const loginResponse = await agent
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 identifier: TEST_EMAIL,
                 password: TEST_PASSWORD,
@@ -88,7 +88,7 @@ describe("POST /auth/refresh", () => {
         expect(loginResponse.status).toBe(200);
 
         const refreshResponse = await agent
-            .post("/auth/refresh");
+            .post("/api/v1/auth/refresh");
 
         expect(refreshResponse.status).toBe(200);
 
@@ -112,7 +112,7 @@ describe("POST /auth/refresh", () => {
 
     it("should reject a request without a refresh token", async () => {
         const response = await request(app)
-            .post("/auth/refresh");
+            .post("/api/v1/auth/refresh");
 
         expect(response.status).toBe(401);
 
@@ -127,7 +127,7 @@ describe("POST /auth/refresh", () => {
 
     it("should reject a fake refresh token", async () => {
         const response = await request(app)
-            .post("/auth/refresh")
+            .post("/api/v1/auth/refresh")
             .set("Cookie", "refreshToken=fake-token");
 
         expect(response.status).toBe(401);
@@ -141,7 +141,7 @@ describe("POST /auth/refresh", () => {
         const agent = request.agent(app);
 
         await agent
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 identifier: TEST_EMAIL,
                 password: TEST_PASSWORD,
@@ -159,7 +159,7 @@ describe("POST /auth/refresh", () => {
         );
 
         const response = await agent
-            .post("/auth/refresh");
+            .post("/api/v1/auth/refresh");
 
         expect(response.status).toBe(401);
 
@@ -172,7 +172,7 @@ describe("POST /auth/refresh", () => {
         const agent = request.agent(app);
 
         await agent
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 identifier: TEST_EMAIL,
                 password: TEST_PASSWORD,
@@ -190,7 +190,7 @@ describe("POST /auth/refresh", () => {
         );
 
         const response = await agent
-            .post("/auth/refresh");
+            .post("/api/v1/auth/refresh");
 
         expect(response.status).toBe(401);
 
@@ -203,7 +203,7 @@ describe("POST /auth/refresh", () => {
         const agent = request.agent(app);
 
         const loginResponse = await agent
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 identifier: TEST_EMAIL,
                 password: TEST_PASSWORD,
@@ -212,7 +212,7 @@ describe("POST /auth/refresh", () => {
         expect(loginResponse.status).toBe(200);
 
         const firstRefresh = await agent
-            .post("/auth/refresh");
+            .post("/api/v1/auth/refresh");
 
         expect(firstRefresh.status).toBe(200);
 
@@ -221,7 +221,7 @@ describe("POST /auth/refresh", () => {
         ).toContain("refreshToken=");
 
         const secondRefresh = await agent
-            .post("/auth/refresh");
+            .post("/api/v1/auth/refresh");
 
         expect(secondRefresh.status).toBe(200);
 
@@ -244,7 +244,7 @@ describe("POST /auth/refresh", () => {
         const agent = request.agent(app);
 
         await agent
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 identifier: TEST_EMAIL,
                 password: TEST_PASSWORD,
@@ -267,7 +267,7 @@ describe("POST /auth/refresh", () => {
         const tokenHashBefore = before.rows[0].token_hash;
 
         await agent
-            .post("/auth/refresh");
+            .post("/api/v1/auth/refresh");
 
         const after = await pool.query(
             `

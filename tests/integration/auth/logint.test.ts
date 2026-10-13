@@ -51,7 +51,7 @@ async function cleanupTestData() {
     );
 }
 
-describe("POST /auth/login", () => {
+describe("POST /api/v1/auth/login", () => {
     beforeAll(async () => {
         await cleanupTestData();
         await createTestUser();
@@ -64,7 +64,7 @@ describe("POST /auth/login", () => {
 
     it("should login successfully with valid credentials", async () => {
         const response = await request(app)
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 identifier: TEST_EMAIL,
                 password: TEST_PASSWORD,
@@ -116,7 +116,7 @@ describe("POST /auth/login", () => {
 
     it("should reject an incorrect password", async () => {
         const response = await request(app)
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 identifier: TEST_EMAIL,
                 password: "WrongPassword@123",
@@ -135,7 +135,7 @@ describe("POST /auth/login", () => {
 
     it("should reject an unknown user", async () => {
         const response = await request(app)
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 identifier: "does-not-exist@splitly.dev",
                 password: TEST_PASSWORD,
@@ -150,7 +150,7 @@ describe("POST /auth/login", () => {
 
     it("should reject a missing identifier", async () => {
         const response = await request(app)
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 password: TEST_PASSWORD,
             });
@@ -164,7 +164,7 @@ describe("POST /auth/login", () => {
 
     it("should reject a missing password", async () => {
         const response = await request(app)
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 identifier: TEST_EMAIL,
             });
@@ -188,7 +188,7 @@ describe("POST /auth/login", () => {
         );
 
         const response = await request(app)
-            .post("/auth/login")
+            .post("/api/v1/auth/login")
             .send({
                 identifier: TEST_EMAIL,
                 password: "WrongPassword@123",
@@ -217,7 +217,7 @@ describe("POST /auth/login", () => {
 
         try {
             const response = await request(app)
-                .post("/auth/login")
+                .post("/api/v1/auth/login")
                 .send({
                     identifier: TEST_EMAIL,
                     password: TEST_PASSWORD,

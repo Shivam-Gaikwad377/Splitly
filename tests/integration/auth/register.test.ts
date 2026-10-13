@@ -87,7 +87,7 @@ async function createExistingUsers() {
     );
 }
 
-describe("POST /auth/register", () => {
+describe("POST /api/v1/auth/register", () => {
     beforeAll(async () => {
         await cleanupTestUsers();
         await createExistingUsers();
@@ -103,7 +103,7 @@ describe("POST /auth/register", () => {
 
     it("should register a user successfully", async () => {
         const response = await request(app)
-            .post("/auth/register")
+            .post("/api/v1/auth/register")
             .send({
                 name: "Registration Test User",
                 email: EMAIL_SUCCESS,
@@ -169,7 +169,7 @@ describe("POST /auth/register", () => {
 
     it("should reject an invalid request body", async () => {
         const response = await request(app)
-            .post("/auth/register")
+            .post("/api/v1/auth/register")
             .send({
                 name: "Registration Test User",
                 email: "not-an-email",
@@ -190,7 +190,7 @@ describe("POST /auth/register", () => {
 
     it("should reject an existing email, even if the account is unverified", async () => {
         const response = await request(app)
-            .post("/auth/register")
+            .post("/api/v1/auth/register")
             .send({
                 name: "Another User",
                 email: EMAIL_EXISTING,
@@ -213,7 +213,7 @@ describe("POST /auth/register", () => {
 
     it("should reject an existing phone number", async () => {
         const response = await request(app)
-            .post("/auth/register")
+            .post("/api/v1/auth/register")
             .send({
                 name: "Phone Conflict User",
                 email: EMAIL_PHONE_CONFLICT,
@@ -237,7 +237,7 @@ describe("POST /auth/register", () => {
 
     it("should register a user without a phone number", async () => {
         const response = await request(app)
-            .post("/auth/register")
+            .post("/api/v1/auth/register")
             .send({
                 name: "No Phone User",
                 email: EMAIL_NO_PHONE,
