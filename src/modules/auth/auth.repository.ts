@@ -46,11 +46,13 @@ export async function revokeAuthSession(sessionId: bigint, userId: bigint) {
     return result.rowCount === 1;
 }
 
+
 export async function findUserByEmail(email: string) {
     const result = await pool.query(
-        "SELECT id FROM users WHERE email = $1 LIMIT 1",
+        "SELECT id, email_isverified FROM users WHERE email = $1 LIMIT 1",
         [email]
     );
+
     return result.rows[0] ?? null;
 }
 
@@ -68,4 +70,22 @@ export async function createUser(name: string, email: string, phone: string | nu
         [name, email, phone, passwordHash, false]
     );
     return result.rows[0] ?? null;
+}
+
+
+export async function saveEmailVerificationCode(
+    userId: string,
+    tokenHash: string,
+    expiresAt: Date
+): Promise<boolean> {
+    const result = await pool.query(
+        `UPDATE users
+         SET email_verification_token_hash = $1,
+             email_verification_token_expiresat = $2
+         WHERE id = $3
+           AND email_isverified = FALSE`,
+        [tokenHash, expiresAt, userId]
+    );
+
+    return result.rowCount === 1;
 }

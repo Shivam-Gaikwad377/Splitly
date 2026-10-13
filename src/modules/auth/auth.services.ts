@@ -7,11 +7,17 @@ import {
     revokeAuthSession,
     createUser,
     findUserByEmail,
-    findUserByPhone
+    findUserByPhone,
+    saveEmailVerificationCode
 } from './auth.repository';
 import { generateRefreshToken, hashRefreshToken } from '../../utils/auth/refreshToken';
 import { signAccessToken } from '../../utils/auth/jwt';
 import { AppError } from '../../utils/app-error';
+import {
+    generateEmailVerificationCode,
+    hashEmailVerificationCode
+} from '../../utils/auth/emailVerificationCode'
+import { env } from '../../config/env';
 function isPostgresUniqueViolation(
     error: unknown
 ): error is { code: "23505"; constraint?: string } {
@@ -201,6 +207,51 @@ export async function registerService(name: string, email: string, phone: string
 
         throw error;
     }
+}
+
+
+
+
+const CODE_EXPIRY_MS = 10 * 60 * 1000;
+
+type EmailSender = (
+    email: string,
+    code: string
+) => Promise<void>;
+
+export async function requestEmailVerification(
+    email: string,
+    sendEmail: EmailSender
+): Promise<void> {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await findUserByEmail(normalizedEmail);
+
+    // Keep the public response generic for ineligible accounts.
+    if (!user || user.email_isverified) {
+        return;
+    }
+
+    const code = generateEmailVerificationCode();
+
+    const tokenHash = hashEmailVerificationCode(
+        code,
+        env.emailVerification.secret
+    );
+
+    const expiresAt = new Date(Date.now() + CODE_EXPIRY_MS);
+
+    const saved = await saveEmailVerificationCode(
+        String(user.id),
+        tokenHash,
+        expiresAt
+    );
+
+    if (!saved) {
+        return;
+    }
+
+    await sendEmail(normalizedEmail, code);
 }
 
 
