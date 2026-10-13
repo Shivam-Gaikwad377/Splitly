@@ -1,8 +1,8 @@
 
 import { describe, expect, it } from "vitest";
 import { generateEmailVerificationCode, hashEmailVerificationCode, verifyEmailVerificationCode } from "../../../src/utils/auth/emailVerifcationCode";
-
-const SECRET = "test-email-verification-secret";
+import { env } from "../../../src/config/env";
+const SECRET = env.emailVerification.secret;
 const CODE = "483921";
 
 describe("generateEmailVerificationCode", () => {

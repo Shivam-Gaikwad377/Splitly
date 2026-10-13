@@ -28,4 +28,9 @@ export const env = {
     secret: requireEnv("JWT_SECRET"),
     expiresIn: process.env.JWT_EXPIRES_IN || "15m",
   },
+
+
+  emailVerification: {
+    secret: requireEnv("EMAIL_VERIFICATION_SECRET"),
+  },
 };

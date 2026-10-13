@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict NWoU86HLUwFlF1bPuyK22opJNs4mWygrIprefnRupEtX8XLEmNXIFk613XmQXFI
+-- \restrict NWoU86HLUwFlF1bPuyK22opJNs4mWygrIprefnRupEtX8XLEmNXIFk613XmQXFI
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -216,10 +216,10 @@ CREATE TABLE public.users (
     password_hash text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    email_verfication_token_hash text,
-    email_isverified boolean,
-    email_verification_token_expiresat timestamp with time zone,
-    pending_email character varying(254)
+  email_verification_token_hash text,
+email_isverified boolean DEFAULT false NOT NULL,
+email_verification_token_expiresat timestamp with time zone,
+pending_email character varying(254)
 );
 
 
