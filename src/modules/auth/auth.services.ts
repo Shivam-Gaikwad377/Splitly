@@ -11,7 +11,12 @@ import {
     saveEmailVerificationCode,
     clearVerificationCode,
     findUserForEmailVerification,
-    markEmailAsVerified
+    markEmailAsVerified,
+    findUserForPasswordReset,
+    findUserForPasswordResetCode,
+    savePasswordResetCode,
+    updatePasswordAndConsumeResetCode,
+    clearPasswordResetCode
 } from './auth.repository';
 import { generateRefreshToken, hashRefreshToken } from '../../utils/auth/refreshToken';
 import { signAccessToken } from '../../utils/auth/jwt';
@@ -280,14 +285,14 @@ export async function verifyEmail(
             "INVALID_EMAIL_OR_CODE"
         );
     }
-    if(!user.email_verification_token_hash || !user.email_verification_token_expiresat) {
+    if (!user.email_verification_token_hash || !user.email_verification_token_expiresat) {
         throw new AppError(
             "Invalid email or code",
             400,
             "INVALID_EMAIL_OR_CODE"
         );
     }
-    if(user.email_isverified) {
+    if (user.email_isverified) {
         throw new AppError(
             "Email is already verified",
             409,
@@ -316,6 +321,147 @@ export async function verifyEmail(
 
     return markedAsVerified;
 
+}
+
+type PasswordResetEmailSender = (
+    email: string,
+    code: string
+) => Promise<void>;
+
+const PASSWORD_RESET_CODE_EXPIRY_MS = 10 * 60 * 1000;
+
+/**
+ * Requests a password-reset code.
+ *
+ * Returns normally for unknown or unverified accounts so the
+ * API can always return the same generic response.
+ */
+export async function requestPasswordReset(
+    email: string,
+    sendEmail: PasswordResetEmailSender
+): Promise<void> {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await findUserForPasswordReset(normalizedEmail);
+
+    // Do not reveal whether an account exists.
+    if (!user || !user.email_isverified) {
+        return;
+    }
+
+    const code = generateEmailVerificationCode();
+
+    const tokenHash = hashEmailVerificationCode(
+        code,
+        env.emailVerification.secret
+    );
+
+    const expiresAt = new Date(
+        Date.now() + PASSWORD_RESET_CODE_EXPIRY_MS
+    );
+
+    const saved = await savePasswordResetCode(
+        String(user.id),
+        tokenHash,
+        expiresAt
+    );
+
+    if (!saved) {
+        return;
+    }
+
+
+    try {
+        await sendEmail(normalizedEmail, code);
+    } catch (sendError: unknown) {
+        // Clear only the code created by this request.
+        try {
+            await clearPasswordResetCode(
+                String(user.id),
+                tokenHash,
+                expiresAt
+            );
+        } catch (cleanupError: unknown) {
+            // Cleanup failure must not change the public response.
+            console.error(
+                "Failed to clear password-reset code after email delivery failure.",
+                cleanupError
+            );
+        }
+
+        console.error(
+            "Failed to send password-reset email.",
+            sendError
+        );
+    }
+
+}
+
+/**
+ * Validates the reset code and changes the password.
+ */
+export async function resetPassword(
+    email: string,
+    code: string,
+    newPassword: string
+): Promise<void> {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await findUserForPasswordResetCode(
+        normalizedEmail
+    );
+
+    if (
+        !user ||
+        !user.password_reset_token_hash ||
+        !user.password_reset_token_expires_at
+    ) {
+        throw new AppError(
+            "Invalid or expired reset code.",
+            400,
+            "INVALID_RESET_TOKEN"
+        );
+    }
+
+    const isCodeValid = verifyEmailVerificationCode(
+        code,
+        user.password_reset_token_hash,
+        env.emailVerification.secret
+    );
+
+    const isCodeUnexpired =
+        new Date(
+            user.password_reset_token_expires_at
+        ).getTime() > Date.now();
+
+    if (!isCodeValid || !isCodeUnexpired) {
+        throw new AppError(
+            "Invalid or expired reset code.",
+            400,
+            "INVALID_RESET_TOKEN"
+        );
+    }
+
+    // Never store the new password in plaintext.
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // The repository must conditionally consume the exact code
+    // validated above and update the password atomically.
+    const updated = await updatePasswordAndConsumeResetCode(
+        String(user.id),
+        user.password_reset_token_hash,
+        newPasswordHash
+    );
+
+    if (!updated) {
+        // The code might have expired, been replaced, or
+        // already been consumed by another request.
+        throw new AppError(
+            "Invalid or expired reset code.",
+            400,
+            "INVALID_RESET_TOKEN"
+        );
+    }
 }
 
 

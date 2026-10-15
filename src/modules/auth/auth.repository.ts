@@ -139,4 +139,116 @@ export async function markEmailAsVerified(
 }
 
 
+export async function findUserForPasswordReset(email: string) {
+    const result = await pool.query(
+        `SELECT id, email, email_isverified
+         FROM users
+         WHERE email = $1
+         LIMIT 1`,
+        [email]
+    );
+
+    return result.rows[0] ?? null;
+}
+
+export async function savePasswordResetCode(
+    userId: string,
+    tokenHash: string,
+    expiresAt: Date
+): Promise<boolean> {
+    const result = await pool.query(
+        `UPDATE users
+         SET password_reset_token_hash = $1,
+             password_reset_token_expires_at = $2
+         WHERE id = $3`,
+        [tokenHash, expiresAt, userId]
+    );
+
+    return result.rowCount === 1;
+}
+
+export async function findUserForPasswordResetCode(email: string) {
+    const result = await pool.query(
+        `SELECT
+            id,
+            password_reset_token_hash,
+            password_reset_token_expires_at
+         FROM users
+         WHERE email = $1
+         LIMIT 1`,
+        [email]
+    );
+
+    return result.rows[0] ?? null;
+}
+
+export async function updatePasswordAndConsumeResetCode(
+    userId: string,
+    expectedTokenHash: string,
+    newPasswordHash: string
+): Promise<boolean> {
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+
+        const result = await client.query(
+            `UPDATE users
+             SET password_hash = $1,
+                 password_reset_token_hash = NULL,
+                 password_reset_token_expires_at = NULL
+             WHERE id = $2
+               AND password_reset_token_hash = $3
+               AND password_reset_token_expires_at > NOW()
+             RETURNING id`,
+            [newPasswordHash, userId, expectedTokenHash]
+        );
+
+        // The code was invalid, expired, or already consumed.
+        if (result.rowCount !== 1) {
+            await client.query("ROLLBACK");
+            return false;
+        }
+
+        // A password reset invalidates existing login sessions.
+        await client.query(
+            `UPDATE auth_sessions
+             SET revoked_at = NOW()
+             WHERE user_id = $1
+               AND revoked_at IS NULL`,
+            [userId]
+        );
+
+        await client.query("COMMIT");
+        return true;
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+
+export async function clearPasswordResetCode(
+    userId: string,
+    expectedTokenHash: string,
+    expectedExpiresAt: Date
+): Promise<boolean> {
+    const result = await pool.query(
+        `UPDATE users
+         SET password_reset_token_hash = NULL,
+             password_reset_token_expires_at = NULL
+         WHERE id = $1
+           AND password_reset_token_hash = $2
+           AND password_reset_token_expires_at = $3`,
+        [userId, expectedTokenHash, expectedExpiresAt]
+    );
+
+    return result.rowCount === 1;
+}
+
+
+
+
 

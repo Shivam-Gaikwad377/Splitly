@@ -80,3 +80,23 @@ export const requestEmailVerificationSchema = z.object({
 export const verifyEmailSchema = z.object({
     code: z.string().regex(/^\d{6}$/, "Code must be exactly 6 digits"),
 });
+
+
+export const forgotPasswordSchema = z.object({
+    email: z
+        .string()
+        .trim()
+        .toLowerCase()
+        .email("Enter a valid email address")
+        .max(254, "Email address is too long"),
+});
+
+export const resetPasswordSchema = z.object({
+    code: z
+        .string()
+        .regex(/^\d{6}$/, "Code must be exactly 6 digits"),
+
+    newPassword: z
+        .string()
+        .min(8, "Password must contain at least 8 characters"),
+});

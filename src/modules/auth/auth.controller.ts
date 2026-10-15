@@ -1,9 +1,9 @@
 import type { Request, Response } from "express";
-import { login, logoutService, refreshTokenService, registerService, requestEmailVerification, verifyEmail } from "./auth.services";
+import { login, logoutService, refreshTokenService, registerService, requestEmailVerification, verifyEmail, requestPasswordReset, resetPassword } from "./auth.services";
 import z from "zod";
 import { ApiResponse } from "../../types/apiResponse";
 import { env } from "../../config/env"
-import { sendVerificationEmail } from "../../utils/emails/brevoEmail"
+import { sendVerificationEmail, sendPasswordResetEmail } from "../../utils/emails/brevoEmail"
 import { AppError } from "../../utils/app-error";
 type User = {
     id: bigint | string;
@@ -129,7 +129,7 @@ export async function requestEmailVerificationController(
         message: "If the account is eligible, a verification email will be sent.",
         data: null,
     };
-    
+
     res.status(200).json(response);
 }
 
@@ -165,6 +165,57 @@ export async function verifyEmailController(
     };
     res.status(200).json(response);
 }
+
+
+export async function forgotPasswordController(
+    req: Request,
+    res: Response
+) {
+    const { email } = req.body;
+
+    await requestPasswordReset(email, sendPasswordResetEmail);
+
+    const response: ApiResponse<null> = {
+        success: true,
+        message:
+            "If an account exists for this email, password-reset instructions will be sent.",
+        data: null,
+    };
+
+    res.status(202).json(response);
+}
+
+export async function resetPasswordController(
+    req: Request,
+    res: Response
+) {
+    const emailResult = z
+        .string()
+        .trim()
+        .toLowerCase()
+        .email()
+        .max(254)
+        .safeParse(req.query.email);
+
+    if (!emailResult.success) {
+        throw new AppError(
+            "A valid email address is required.",
+            400,
+            "VALIDATION_ERROR"
+        );
+    }
+
+    const { code, newPassword } = req.body;
+
+    await resetPassword(
+        emailResult.data,
+        code,
+        newPassword
+    );
+
+    res.status(204).send();
+}
+
 
 
 
