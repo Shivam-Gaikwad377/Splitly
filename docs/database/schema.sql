@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- \restrict NWoU86HLUwFlF1bPuyK22opJNs4mWygrIprefnRupEtX8XLEmNXIFk613XmQXFI
+\restrict NWoU86HLUwFlF1bPuyK22opJNs4mWygrIprefnRupEtX8XLEmNXIFk613XmQXFI
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
