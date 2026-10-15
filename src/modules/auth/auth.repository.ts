@@ -89,3 +89,54 @@ export async function saveEmailVerificationCode(
 
     return result.rowCount === 1;
 }
+export async function clearVerificationCode(userId: string): Promise<boolean> {
+    const result = await pool.query(
+        `UPDATE users
+         SET email_verification_token_hash = NULL,
+             email_verification_token_expiresat = NULL
+         WHERE id = $1
+           AND email_isverified = FALSE`,
+        [userId]
+    );
+
+    return result.rowCount === 1;
+}
+
+export async function findUserForEmailVerification(email: string) {
+    const result = await pool.query(
+        `SELECT
+            id,
+            email_isverified,
+            email_verification_token_hash,
+            email_verification_token_expiresat
+         FROM users
+         WHERE email = $1
+         LIMIT 1`,
+        [email]
+    );
+
+    return result.rows[0] ?? null;
+}
+
+export async function markEmailAsVerified(
+    userId: string,
+    expectedTokenHash: string
+): Promise<boolean> {
+    const result = await pool.query(
+        `UPDATE users
+         SET email_isverified = TRUE,
+             email_verification_token_hash = NULL,
+             email_verification_token_expiresat = NULL
+         WHERE id = $1
+           AND email_isverified = FALSE
+           AND email_verification_token_hash = $2
+           AND email_verification_token_expiresat > NOW()
+         RETURNING id`,
+        [userId, expectedTokenHash]
+    );
+
+    return result.rows.length === 1;
+}
+
+
+

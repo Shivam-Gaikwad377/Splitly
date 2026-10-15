@@ -1,7 +1,10 @@
 import type { Request, Response } from "express";
-import { login, logoutService, refreshTokenService, registerService } from "./auth.services";
+import { login, logoutService, refreshTokenService, registerService, requestEmailVerification, verifyEmail } from "./auth.services";
+import z from "zod";
 import { ApiResponse } from "../../types/apiResponse";
 import { env } from "../../config/env"
+import { sendVerificationEmail } from "../../utils/emails/brevoEmail"
+import { AppError } from "../../utils/app-error";
 type User = {
     id: bigint | string;
     name: string;
@@ -112,3 +115,57 @@ export async function registerController(
 
     res.status(201).json(response);
 }
+
+export async function requestEmailVerificationController(
+    req: Request,
+    res: Response
+) {
+    const { email } = req.body;
+
+    await requestEmailVerification(email, sendVerificationEmail);
+
+    const response: ApiResponse<null> = {
+        success: true,
+        message: "If the account is eligible, a verification email will be sent.",
+        data: null,
+    };
+    
+    res.status(200).json(response);
+}
+
+export async function verifyEmailController(
+    req: Request,
+    res: Response
+) {
+    const emailResult = z.string().trim().email().safeParse(req.query.email);
+
+    if (!emailResult.success) {
+        throw new AppError(
+            "A valid email address is required.",
+            400,
+            "VALIDATION_ERROR"
+        );
+    }
+    const { code } = req.body;
+    const email = emailResult.data;
+
+    const result = await verifyEmail(email, code);
+
+    if (!result) {
+        throw new AppError(
+            "Invalid email or code",
+            400,
+            "INVALID_EMAIL_OR_CODE"
+        );
+    }
+    const response: ApiResponse<null> = {
+        success: true,
+        message: "Email verified successfully.",
+        data: null
+    };
+    res.status(200).json(response);
+}
+
+
+
+

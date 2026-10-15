@@ -8,14 +8,18 @@ import {
     createUser,
     findUserByEmail,
     findUserByPhone,
-    saveEmailVerificationCode
+    saveEmailVerificationCode,
+    clearVerificationCode,
+    findUserForEmailVerification,
+    markEmailAsVerified
 } from './auth.repository';
 import { generateRefreshToken, hashRefreshToken } from '../../utils/auth/refreshToken';
 import { signAccessToken } from '../../utils/auth/jwt';
 import { AppError } from '../../utils/app-error';
 import {
     generateEmailVerificationCode,
-    hashEmailVerificationCode
+    hashEmailVerificationCode,
+    verifyEmailVerificationCode
 } from '../../utils/auth/emailVerificationCode'
 import { env } from '../../config/env';
 function isPostgresUniqueViolation(
@@ -241,6 +245,7 @@ export async function requestEmailVerification(
 
     const expiresAt = new Date(Date.now() + CODE_EXPIRY_MS);
 
+
     const saved = await saveEmailVerificationCode(
         String(user.id),
         tokenHash,
@@ -251,7 +256,66 @@ export async function requestEmailVerification(
         return;
     }
 
-    await sendEmail(normalizedEmail, code);
+    try {
+        await sendEmail(normalizedEmail, code);
+    } catch (error) {
+        await clearVerificationCode(String(user.id));
+        console.error("Error sending email:", error);
+    }
+
+
+}
+
+export async function verifyEmail(
+    email: string,
+    code: string
+) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await findUserForEmailVerification(normalizedEmail);
+
+    if (!user) {
+        throw new AppError(
+            "Invalid email or code",
+            400,
+            "INVALID_EMAIL_OR_CODE"
+        );
+    }
+    if(!user.email_verification_token_hash || !user.email_verification_token_expiresat) {
+        throw new AppError(
+            "Invalid email or code",
+            400,
+            "INVALID_EMAIL_OR_CODE"
+        );
+    }
+    if(user.email_isverified) {
+        throw new AppError(
+            "Email is already verified",
+            409,
+            "EMAIL_ALREADY_VERIFIED"
+        );
+    }
+
+    const isCodeValid = verifyEmailVerificationCode(
+        code,
+        user.email_verification_token_hash,
+        env.emailVerification.secret
+    ) && new Date(user.email_verification_token_expiresat).getTime() > Date.now();
+
+    if (!isCodeValid) {
+        throw new AppError(
+            "Invalid email or code",
+            400,
+            "INVALID_EMAIL_OR_CODE"
+        );
+    }
+
+    const markedAsVerified = await markEmailAsVerified(
+        String(user.id),
+        user.email_verification_token_hash
+    );
+
+    return markedAsVerified;
+
 }
 
 

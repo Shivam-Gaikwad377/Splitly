@@ -33,4 +33,10 @@ export const env = {
   emailVerification: {
     secret: requireEnv("EMAIL_VERIFICATION_SECRET"),
   },
+
+  brevo: {
+    apiKey: requireEnv("BREVO_API_KEY"),
+    senderEmail: requireEnv("BREVO_SENDER_EMAIL"),
+    senderName: requireEnv("BREVO_SENDER_NAME"),
+  },
 };

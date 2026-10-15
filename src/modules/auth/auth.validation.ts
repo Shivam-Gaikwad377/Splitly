@@ -67,3 +67,16 @@ export const registerSchema = z.object({
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+
+export const requestEmailVerificationSchema = z.object({
+    email: z
+        .string()
+        .trim()
+        .email("Enter a valid email address")
+        .max(254, "Email address is too long"),
+});
+
+export const verifyEmailSchema = z.object({
+    code: z.string().regex(/^\d{6}$/, "Code must be exactly 6 digits"),
+});
