@@ -36,7 +36,6 @@ jobs:
       JWT_SECRET: ci-test-secret
       JWT_EXPIRES_IN: 15m
       EMAIL_VERIFICATION_SECRET: 631b8ae33a41c8db0cd654b11bd639a9274327e93248344b991123e7f3722189
-      EMAIL_VERIFICATION_SECRET: your-existing-test-secret
       BREVO_API_KEY: ci-placeholder-not-a-real-key
       BREVO_SENDER_EMAIL: splitly-ci@example.com
       BREVO_SENDER_NAME: Splitly CI
