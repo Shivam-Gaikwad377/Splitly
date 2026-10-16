@@ -39,6 +39,7 @@ jobs:
       BREVO_API_KEY: ci-placeholder-not-a-real-key
       BREVO_SENDER_EMAIL: splitly-ci@example.com
       BREVO_SENDER_NAME: Splitly CI
+      RATE_LIMIT_KEY_SECRET: splitly-test-only-rate-limit-key-secret
 
     steps:
       - name: Checkout repository

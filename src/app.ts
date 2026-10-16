@@ -6,7 +6,7 @@ import {
 import routes from "./routes";
 import cookieParser from "cookie-parser";
 const app = express();
-
+app.set("trust proxy", false);
 app.use(express.json());
 app.use(cookieParser());
 app.get("/", (_req, res) => {

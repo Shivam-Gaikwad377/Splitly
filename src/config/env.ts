@@ -16,6 +16,21 @@ function requireEnv(name: string): string {
 
   return value;
 }
+type RateLimitClientIpSource = "socket" | "railway";
+
+function getRateLimitClientIpSource(): RateLimitClientIpSource {
+  const source = process.env.RATE_LIMIT_CLIENT_IP_SOURCE ?? "socket";
+
+  if (source !== "socket" && source !== "railway") {
+    throw new Error(
+      "RATE_LIMIT_CLIENT_IP_SOURCE must be 'socket' or 'railway'",
+    );
+  }
+
+  return source;
+}
+
+const rateLimitClientIpSource = getRateLimitClientIpSource();
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
 
@@ -44,4 +59,9 @@ export const env = {
     senderEmail: requireEnv("BREVO_SENDER_EMAIL"),
     senderName: requireEnv("BREVO_SENDER_NAME"),
   },
+  rateLimit: {
+    keySecret: requireEnv("RATE_LIMIT_KEY_SECRET"),
+    clientIpSource: rateLimitClientIpSource,
+  },
+
 };
