@@ -216,12 +216,12 @@ CREATE TABLE public.users (
     password_hash text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-  email_verification_token_hash text,
-email_isverified boolean DEFAULT false NOT NULL,
-email_verification_token_expiresat timestamp with time zone,
-pending_email character varying(254),
-password_reset_token_hash text,
-password_reset_token_expires_at timestamp with time zone,
+    email_verification_token_hash text,
+    email_isverified boolean DEFAULT false NOT NULL,
+    email_verification_token_expiresat timestamp with time zone,
+    pending_email character varying(254),
+    password_reset_token_hash text,
+    password_reset_token_expires_at timestamp with time zone
 );
 
 

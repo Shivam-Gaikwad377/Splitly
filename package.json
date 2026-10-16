@@ -13,7 +13,7 @@
     "seed": "tsx src/db/seeds/001-auth-test-user.ts",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:integration": "vitest run tests/integration",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:unit": "vitest run tests/unit",
     "test:coverage": "vitest run tests/integration --coverage.enabled"
   },
