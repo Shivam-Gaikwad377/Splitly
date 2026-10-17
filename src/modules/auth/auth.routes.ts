@@ -10,6 +10,8 @@ import {
     verifyEmailController,
     forgotPasswordController,
     resetPasswordController,
+    getCurrentUserController,
+
 } from "./auth.controller";
 
 import {
@@ -25,6 +27,7 @@ import {
     requestEmailVerificationSchema,
     resetPasswordSchema,
     verifyEmailSchema,
+
 } from "./auth.validation";
 
 import {
@@ -42,7 +45,8 @@ import {
     verifyEmailAccountRateLimiter,
     forgotPasswordAccountRateLimiter,
     resetPasswordAccountRateLimiter,
-    rateLimitClientIpGuard
+    rateLimitClientIpGuard,
+
 } from "../../middleware/rate-limit.middleware";
 
 const router = Router();
@@ -118,6 +122,12 @@ router.post(
     resetPasswordAccountRateLimiter,
     validateBody(resetPasswordSchema),
     resetPasswordController,
+);
+
+router.get(
+    "/me",
+    authMiddleware,
+    getCurrentUserController,
 );
 
 export default router;

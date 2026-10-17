@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { login, logoutService, refreshTokenService, registerService, requestEmailVerification, verifyEmail, requestPasswordReset, resetPassword } from "./auth.services";
+import { login, logoutService, refreshTokenService, registerService, requestEmailVerification, verifyEmail, requestPasswordReset, resetPassword, getCurrentUser } from "./auth.services";
 import z from "zod";
 import { ApiResponse } from "../../types/apiResponse";
 import { env } from "../../config/env"
@@ -216,7 +216,24 @@ export async function resetPasswordController(
     res.status(204).send();
 }
 
+export async function getCurrentUserController(
+    req: Request,
+    res: Response
+) {
+    const user = await getCurrentUser(
+        String(req.user.userId)
+    );
 
+    const response: ApiResponse<{ user: User }> = {
+        success: true,
+        message: "Current user retrieved successfully",
+        data: {
+            user,
+        },
+    };
+
+    res.status(200).json(response);
+}
 
 
 

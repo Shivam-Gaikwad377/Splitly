@@ -248,6 +248,22 @@ export async function clearPasswordResetCode(
     return result.rowCount === 1;
 }
 
+export async function findUserById(userId: string) {
+    const result = await pool.query(
+        `SELECT
+            id,
+            name,
+            email,
+            phone,
+            email_isverified
+         FROM users
+         WHERE id = $1
+         LIMIT 1`,
+        [userId]
+    );
+
+    return result.rows[0] ?? null;
+}
 
 
 

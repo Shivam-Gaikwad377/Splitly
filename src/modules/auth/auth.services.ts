@@ -16,7 +16,8 @@ import {
     findUserForPasswordResetCode,
     savePasswordResetCode,
     updatePasswordAndConsumeResetCode,
-    clearPasswordResetCode
+    clearPasswordResetCode,
+    findUserById
 } from './auth.repository';
 import { generateRefreshToken, hashRefreshToken } from '../../utils/auth/refreshToken';
 import { signAccessToken } from '../../utils/auth/jwt';
@@ -462,6 +463,26 @@ export async function resetPassword(
             "INVALID_RESET_TOKEN"
         );
     }
+}
+
+export async function getCurrentUser(userId: string) {
+    const user = await findUserById(userId);
+
+    if (!user) {
+        throw new AppError(
+            "User not found",
+            404,
+            "USER_NOT_FOUND"
+        );
+    }
+
+    return {
+        id: String(user.id),
+        name: user.name,
+        email: user.email,
+        phone: user.phone ?? null,
+        emailVerified: Boolean(user.email_isverified),
+    };
 }
 
 
