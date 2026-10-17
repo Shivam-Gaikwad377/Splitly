@@ -178,23 +178,59 @@ describe("GET /api/v1/auth/me", () => {
         expect(response.status).toBe(401);
 
         expect(response.body).toEqual({
-            message: "Unauthorized",
+            success: false,
+            error: {
+                code: "UNAUTHORIZED",
+                message: "Authentication required",
+            },
         });
     });
 
-    it("should reject requests with an invalid access token", async () => {
+    it("should reject a valid JWT when its session does not exist", async () => {
+        const userId = await getUserId();
+
+        // beforeEach removes this user's sessions.
+        const accessToken = signAccessToken(
+            userId,
+            TEST_SESSION_ID
+        );
+
         const response = await request(app)
             .get("/api/v1/auth/me")
-            .set("Authorization", "Bearer invalid-access-token");
+            .set("Authorization", `Bearer ${accessToken}`);
 
         expect(response.status).toBe(401);
 
         expect(response.body).toEqual({
-            message: "Invalid or expired access token",
+            success: false,
+            error: {
+                code: "INVALID_ACCESS_TOKEN",
+                message: "Invalid or expired access token",
+            },
         });
     });
 
-    it("should return 404 when the authenticated user no longer exists", async () => {
+    it("should reject an access token after its session is revoked", async () => {
+        const accessToken = await loginAndGetAccessToken();
+
+        await pool.query(
+            `UPDATE auth_sessions
+         SET revoked_at = NOW()
+         WHERE user_id = (
+             SELECT id FROM users WHERE email = $1
+         )`,
+            [TEST_EMAIL]
+        );
+
+        const response = await request(app)
+            .get("/api/v1/auth/me")
+            .set("Authorization", `Bearer ${accessToken}`);
+
+        expect(response.status).toBe(401);
+        expect(response.body.error.code).toBe("INVALID_ACCESS_TOKEN");
+    });
+
+    it("should reject a token when the authenticated user no longer exists", async () => {
         const existingUser = await pool.query(
             `SELECT id FROM users WHERE id = $1`,
             [MISSING_USER_ID],
@@ -211,13 +247,13 @@ describe("GET /api/v1/auth/me", () => {
             .get("/api/v1/auth/me")
             .set("Authorization", `Bearer ${accessToken}`);
 
-        expect(response.status).toBe(404);
+        expect(response.status).toBe(401);
 
         expect(response.body).toEqual({
             success: false,
             error: {
-                code: "USER_NOT_FOUND",
-                message: "User not found",
+                code: "INVALID_ACCESS_TOKEN",
+                message: "Invalid or expired access token",
             },
         });
     });

@@ -1,6 +1,6 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 
-export function generateRefreshToken():string{
+export function generateRefreshToken(): string {
 
     const buffer = crypto.randomBytes(32);
     const refreshToken = buffer.toString("base64url"); // Use base64url encoding for URL-safe token

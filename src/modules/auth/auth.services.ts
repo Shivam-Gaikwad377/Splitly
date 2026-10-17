@@ -28,6 +28,7 @@ import {
     verifyEmailVerificationCode
 } from '../../utils/auth/emailVerificationCode'
 import { env } from '../../config/env';
+import { parsePhoneNumberFromString } from "libphonenumber-js/max";
 function isPostgresUniqueViolation(
     error: unknown
 ): error is { code: "23505"; constraint?: string } {
@@ -38,9 +39,27 @@ function isPostgresUniqueViolation(
         error.code === "23505"
     );
 }
+function normalizeLoginIdentifier(identifier: string): string {
+    const value = identifier.trim();
+
+    // Email addresses are stored in lowercase.
+    if (value.includes("@")) {
+        return value.toLowerCase();
+    }
+
+    // Phone numbers are stored in E.164 format.
+    const phone = parsePhoneNumberFromString(value);
+
+    if (phone?.isValid()) {
+        return phone.number;
+    }
+
+    // Invalid identifiers still fail through normal credential checks.
+    return value;
+}
 
 export async function login(identifier: string, password: string) {
-    const user = await findUserByIdentifier(identifier);
+    const user = await findUserByIdentifier(normalizeLoginIdentifier(identifier));
 
     if (!user) {
         throw new AppError(
@@ -79,7 +98,7 @@ export async function login(identifier: string, password: string) {
     const hashedRefreshToken = hashRefreshToken(refreshToken);
 
     // Create a new auth session in the database
-    const authSession = await createAuthSession(BigInt(user.id), hashedRefreshToken);
+    const authSession = await createAuthSession(String(user.id), hashedRefreshToken);
 
     // Generate an access token
     const accessToken = signAccessToken(user.id, authSession.id);
@@ -129,7 +148,7 @@ export async function refreshTokenService(oldRefreshToken: string) {
     const hashedNewRefreshToken = hashRefreshToken(newRefreshToken);
 
     const updateSuccess = await rotateRefreshToken(
-        BigInt(authSession.id),
+        String(authSession.id),
         hashedNewRefreshToken,
         hashedOldRefreshToken
     );
@@ -143,8 +162,8 @@ export async function refreshTokenService(oldRefreshToken: string) {
     }
 
     const accessToken = signAccessToken(
-        authSession.user_id,
-        authSession.id
+        String(authSession.user_id),
+        String(authSession.id)
     );
 
     return {
@@ -153,7 +172,7 @@ export async function refreshTokenService(oldRefreshToken: string) {
     };
 }
 
-export async function logoutService(sessionId: bigint, userId: bigint): Promise<boolean> {
+export async function logoutService(sessionId: string, userId: string): Promise<boolean> {
     const revokeSuccess = await revokeAuthSession(sessionId, userId);
     if (!revokeSuccess) {
         throw new AppError(
@@ -264,9 +283,26 @@ export async function requestEmailVerification(
 
     try {
         await sendEmail(normalizedEmail, code);
-    } catch (error) {
-        await clearVerificationCode(String(user.id));
-        console.error("Error sending email:", error);
+    } catch (sendError: unknown) {
+        // Clear only the verification code created by this request.
+        try {
+            await clearVerificationCode(
+                String(user.id),
+                tokenHash,
+                expiresAt
+            );
+        } catch (cleanupError: unknown) {
+            // A cleanup failure must not change the public response.
+            console.error(
+                "Failed to clear email-verification code after email delivery failure.",
+                cleanupError
+            );
+        }
+
+        console.error(
+            "Failed to send email-verification email.",
+            sendError
+        );
     }
 
 

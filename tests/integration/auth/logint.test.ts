@@ -8,7 +8,7 @@ import { pool } from "../../../src/config/database";
 const TEST_EMAIL = "login-test@splitly.dev";
 const TEST_PASSWORD = "Test@12345";
 const TEST_NAME = "Login Test User";
-
+const TEST_PHONE = "+14155552671";
 async function createTestUser() {
     const passwordHash = await bcrypt.hash(TEST_PASSWORD, 10);
 
@@ -28,7 +28,7 @@ async function createTestUser() {
             TEST_EMAIL,
             passwordHash,
             TEST_NAME,
-            null,
+            TEST_PHONE,
             true,
         ]
     );
@@ -66,7 +66,7 @@ describe("POST /api/v1/auth/login", () => {
         const response = await request(app)
             .post("/api/v1/auth/login")
             .send({
-                identifier: TEST_EMAIL,
+                identifier: TEST_EMAIL.toUpperCase(),
                 password: TEST_PASSWORD,
             });
 
@@ -112,6 +112,30 @@ describe("POST /api/v1/auth/login", () => {
 
         expect(session.rows[0].revoked_at).toBeNull();
         expect(session.rows[0].expires_at).toBeInstanceOf(Date);
+    });
+
+    it("should login using a formatted phone number", async () => {
+        // Keep this test independent from sessions created by other tests.
+        await pool.query(
+            `DELETE FROM auth_sessions
+         WHERE user_id = (
+             SELECT id FROM users WHERE email = $1
+         )`,
+            [TEST_EMAIL]
+        );
+
+        const response = await request(app)
+            .post("/api/v1/auth/login")
+            .send({
+                identifier: "+1 (415) 555-2671",
+                password: TEST_PASSWORD,
+            });
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.accessToken).toEqual(
+            expect.any(String)
+        );
     });
 
     it("should reject an incorrect password", async () => {

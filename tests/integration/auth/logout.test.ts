@@ -111,7 +111,12 @@ describe("POST /api/v1/auth/logout", () => {
             .set("Authorization", `Bearer ${accessToken}`);
 
         expect(logoutResponse.status).toBe(204);
+        const meResponse = await request(app)
+            .get("/api/v1/auth/me")
+            .set("Authorization", `Bearer ${accessToken}`);
 
+        expect(meResponse.status).toBe(401);
+        expect(meResponse.body.error.code).toBe("INVALID_ACCESS_TOKEN");
         const setCookie = String(logoutResponse.headers["set-cookie"]);
         expect(setCookie).toContain("refreshToken=");
         expect(setCookie).toMatch(

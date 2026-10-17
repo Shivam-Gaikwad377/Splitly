@@ -6,12 +6,11 @@ import { env } from "../../config/env"
 import { sendVerificationEmail, sendPasswordResetEmail } from "../../utils/emails/brevoEmail"
 import { AppError } from "../../utils/app-error";
 type User = {
-    id: bigint | string;
+    id: string;
     name: string;
     email: string;
     phone: string | null;
     emailVerified: boolean;
-
 }
 
 type LoginResponse = {
@@ -69,16 +68,15 @@ export async function refreshTokenController(
 };
 
 export async function logoutController(req: Request, res: Response) {
-    const sessionId = BigInt(req.user.sessionId);
-    const userId = BigInt(req.user.userId);
-    const refreshToken = req.cookies?.refreshToken;
+    const { sessionId, userId } = req.user;
+
     await logoutService(sessionId, userId);
 
 
 
     res.clearCookie("refreshToken", {
         httpOnly: true,
-        secure: env.nodeEnv === "production",
+        secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
     });
     res.status(204).send();

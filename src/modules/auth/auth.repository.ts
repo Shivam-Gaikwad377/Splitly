@@ -12,12 +12,25 @@ export async function findUserByIdentifier(identifier: string) {
 
 }
 
-export async function createAuthSession(userId: bigint, refreshTokenHash: string) {
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Set expiration to 30 days from now
+export async function createAuthSession(
+    userId: string,
+    refreshTokenHash: string
+) {
+    const expiresAt = new Date(
+        Date.now() + 30 * 24 * 60 * 60 * 1000
+    );
+
     const result = await pool.query(
-        "INSERT INTO auth_sessions (user_id, token_hash, expires_at) VALUES ($1, $2, $3) RETURNING id",
+        `INSERT INTO auth_sessions (
+            user_id,
+            token_hash,
+            expires_at
+        )
+        VALUES ($1, $2, $3)
+        RETURNING id`,
         [userId, refreshTokenHash, expiresAt]
     );
+
     return result.rows[0] ?? null;
 }
 
@@ -30,7 +43,7 @@ export async function findAuthSessionByTokenHash(tokenHash: string) {
     return result.rows[0] ?? null;
 }
 
-export async function rotateRefreshToken(sessionId: bigint, newTokenHash: string, oldTokenHash: string) {
+export async function rotateRefreshToken(sessionId: string, newTokenHash: string, oldTokenHash: string) {
     const result = await pool.query(
         "UPDATE auth_sessions SET token_hash = $1 WHERE id = $2 AND token_hash = $3 AND expires_at > NOW() AND revoked_at IS NULL",
         [newTokenHash, sessionId, oldTokenHash]
@@ -38,7 +51,7 @@ export async function rotateRefreshToken(sessionId: bigint, newTokenHash: string
     return result.rowCount === 1;
 }
 
-export async function revokeAuthSession(sessionId: bigint, userId: bigint) {
+export async function revokeAuthSession(sessionId: string, userId: string) {
     const result = await pool.query(
         "UPDATE auth_sessions SET revoked_at = NOW() WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL",
         [sessionId, userId]
@@ -89,14 +102,20 @@ export async function saveEmailVerificationCode(
 
     return result.rowCount === 1;
 }
-export async function clearVerificationCode(userId: string): Promise<boolean> {
+export async function clearVerificationCode(
+    userId: string,
+    expectedTokenHash: string,
+    expectedExpiresAt: Date
+): Promise<boolean> {
     const result = await pool.query(
         `UPDATE users
          SET email_verification_token_hash = NULL,
              email_verification_token_expiresat = NULL
          WHERE id = $1
-           AND email_isverified = FALSE`,
-        [userId]
+           AND email_isverified = FALSE
+           AND email_verification_token_hash = $2
+           AND email_verification_token_expiresat = $3`,
+        [userId, expectedTokenHash, expectedExpiresAt]
     );
 
     return result.rowCount === 1;
@@ -265,6 +284,22 @@ export async function findUserById(userId: string) {
     return result.rows[0] ?? null;
 }
 
+export async function hasActiveAuthSession(
+    userId: string,
+    sessionId: string
+): Promise<boolean> {
+    const result = await pool.query(
+        `SELECT 1
+         FROM auth_sessions
+         WHERE id = $1
+           AND user_id = $2
+           AND expires_at > NOW()
+           AND revoked_at IS NULL
+         LIMIT 1`,
+        [sessionId, userId]
+    );
 
+    return result.rowCount === 1;
+}
 
 

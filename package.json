@@ -15,7 +15,7 @@
     "test:run": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:unit": "vitest run tests/unit",
-    "test:coverage": "vitest run tests/integration --coverage.enabled"
+    "test:coverage": "vitest run --config vitest.integration.config.ts --coverage.enabled"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
@@ -34,7 +34,6 @@
     "@getbrevo/brevo": "^6.1.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
-    "crypto": "^1.0.1",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.1",
