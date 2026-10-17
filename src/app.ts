@@ -3,11 +3,12 @@ import {
   errorMiddleware,
   notFoundMiddleware,
 } from "./middleware/error.middleware";
-import { AppError } from "./utils/app-error";
+import routes from "./routes";
+import cookieParser from "cookie-parser";
 const app = express();
-
+app.set("trust proxy", false);
 app.use(express.json());
-
+app.use(cookieParser());
 app.get("/", (_req, res) => {
   res.status(200).json({
     success: true,
@@ -15,17 +16,11 @@ app.get("/", (_req, res) => {
   });
 });
 
-app.get("/test-error", (_req, _res) => {
-  throw new Error("Something went wrong");
-});
 
-app.get("/test-app-error", (_req, _res) => {
-  throw new AppError(
-    "This user does not exist",
-    404,
-    "USER_NOT_FOUND",
-  );
-});
+
+
+app.use("/api/v1", routes);
+
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);
 
