@@ -1,6 +1,18 @@
-node_modules/
-dist/
-.env
-.env.test
+# Dependencies
+**/node_modules/
+
+# Environment files and secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Build output and test coverage
+**/dist/
+**/coverage/
+
+# Logs
 *.log
-coverage/**
+
+# OS files
+.DS_Store
+Thumbs.db
