@@ -1,27 +1,21 @@
 import {
-    createContext,
     useCallback,
-    useContext,
     useEffect,
     useMemo,
     useState,
+    useSyncExternalStore,
     type ReactNode,
 } from "react";
 
-export type Theme = "light" | "dark" | "system";
-type ResolvedTheme = "light" | "dark";
-
-interface ThemeContextValue {
-    theme: Theme;
-    resolvedTheme: ResolvedTheme;
-    setTheme: (theme: Theme) => void;
-    toggleTheme: () => void;
-}
+import {
+    ThemeContext,
+    type ResolvedTheme,
+    type Theme,
+    type ThemeContextValue,
+} from "@/providers/theme-context";
 
 const STORAGE_KEY = "splitly-theme";
 const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function isTheme(value: string | null): value is Theme {
     return value === "light" || value === "dark" || value === "system";
@@ -36,34 +30,43 @@ function getInitialTheme(): Theme {
         const savedTheme = window.localStorage.getItem(STORAGE_KEY);
         return isTheme(savedTheme) ? savedTheme : "system";
     } catch {
-        // Continue without persistence if browser storage is unavailable.
         return "system";
     }
+}
+
+function subscribeToSystemTheme(onChange: () => void) {
+    if (typeof window === "undefined" || !window.matchMedia) {
+        return () => { };
+    }
+
+    const mediaQuery = window.matchMedia(SYSTEM_THEME_QUERY);
+    mediaQuery.addEventListener("change", onChange);
+
+    return () => {
+        mediaQuery.removeEventListener("change", onChange);
+    };
+}
+
+function getSystemThemeSnapshot(): boolean {
+    return (
+        typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        window.matchMedia(SYSTEM_THEME_QUERY).matches
+    );
+}
+
+function getServerSnapshot(): boolean {
+    return false;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
-    const [systemPrefersDark, setSystemPrefersDark] = useState(
-        () =>
-            typeof window !== "undefined" &&
-            window.matchMedia(SYSTEM_THEME_QUERY).matches,
+    const systemPrefersDark = useSyncExternalStore(
+        subscribeToSystemTheme,
+        getSystemThemeSnapshot,
+        getServerSnapshot,
     );
-
-    useEffect(() => {
-        const mediaQuery = window.matchMedia(SYSTEM_THEME_QUERY);
-
-        const handleChange = (event: MediaQueryListEvent) => {
-            setSystemPrefersDark(event.matches);
-        };
-
-        setSystemPrefersDark(mediaQuery.matches);
-        mediaQuery.addEventListener("change", handleChange);
-
-        return () => {
-            mediaQuery.removeEventListener("change", handleChange);
-        };
-    }, []);
 
     const resolvedTheme: ResolvedTheme =
         theme === "system"
@@ -83,7 +86,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         try {
             window.localStorage.setItem(STORAGE_KEY, theme);
         } catch {
-            // The theme still works for the current session.
+            // Theme selection still works without persistent storage.
         }
     }, [theme]);
 
@@ -96,7 +99,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         });
     }, [resolvedTheme]);
 
-    const value = useMemo(
+    const value = useMemo<ThemeContextValue>(
         () => ({ theme, resolvedTheme, setTheme, toggleTheme }),
         [theme, resolvedTheme, toggleTheme],
     );
@@ -106,14 +109,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
             {children}
         </ThemeContext.Provider>
     );
-}
-
-export function useTheme(): ThemeContextValue {
-    const context = useContext(ThemeContext);
-
-    if (context === null) {
-        throw new Error("useTheme must be used within a ThemeProvider");
-    }
-
-    return context;
 }
