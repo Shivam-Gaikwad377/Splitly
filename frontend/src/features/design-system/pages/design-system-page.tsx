@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useTheme } from "@/providers/theme-provider";
 import {
     ArrowDownRight,
     ArrowUpRight,
@@ -46,11 +46,8 @@ const activities = [
 ];
 
 export function DesignSystemPage() {
-    const [darkMode, setDarkMode] = useState(false);
-
-    useEffect(() => {
-        document.documentElement.classList.toggle("dark", darkMode);
-    }, [darkMode]);
+    const { resolvedTheme, toggleTheme } = useTheme();
+    const darkMode = resolvedTheme === "dark";
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -69,7 +66,7 @@ export function DesignSystemPage() {
                                     : "Switch to dark mode"
                             }
                             aria-pressed={darkMode}
-                            onClick={() => setDarkMode((current) => !current)}
+                            onClick={toggleTheme}
                         >
                             {darkMode ? (
                                 <Sun aria-hidden="true" />
