@@ -1,5 +1,5 @@
 import { Link, Navigate, Route, Routes } from "react-router";
-
+import { LoginPage } from "./features/auth/pages/login-page";
 import { DesignSystemPage } from "@/features/design-system/pages/design-system-page";
 import { AppLayout } from "@/layouts/app-layout";
 import { AuthLayout } from "@/layouts/auth-layout";
@@ -44,13 +44,9 @@ export default function App() {
       <Route element={<AuthLayout />}>
         <Route
           path="login"
-          element={
-            <RoutePlaceholderPage
-              title="Sign in"
-              description="Sign in to access your shared expenses and balances."
-            />
-          }
+          element={<LoginPage />}
         />
+        
 
         <Route
           path="register"

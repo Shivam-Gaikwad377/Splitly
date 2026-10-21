@@ -2,21 +2,24 @@
 
 **Base URL:** `/api/v1`
 
+
+**Response conventions:** successful responses with a body use the repository's `ApiResponse<T>` envelope: `{ "success": true, "message": "...", "data": ... }`. Errors use `{ "success": false, "error": { "code": "...", "message": "..." } }`. Endpoints returning `204 No Content` have no response body.
+
 **Endpoints covered:**
 
 - `POST /auth/register`
 - `POST /auth/login`
+- `POST /auth/refresh`
 - `POST /auth/logout`
 - `GET /auth/me`
 - `POST /auth/verify-email/request`
 - `POST /auth/verify-email`
-- `POST /auth/resend-verification`
 - `POST /auth/forgot-password`
 - `POST /auth/reset-password`
 
-> **Authentication assumption for this first contract:** protected requests use `Authorization: Bearer <accessToken>`. The backend should maintain a revocable session/refresh-token record if `/logout` is expected to invalidate the session server-side. If Splitly later uses HttpOnly cookies instead, the request/response transport changes, but the endpoint semantics and most status codes remain the same.
+> **Authentication transport:** protected requests use `Authorization: Bearer <accessToken>`. The refresh endpoint uses the HttpOnly `refreshToken` cookie. The backend maintains revocable server-side sessions; logout revokes the current session and clears the refresh-token cookie.
 
-> **User identifier rule:** email is required and verified; phone is optional, unique when present, not verified by the current auth flow, and may still be used as a login identifier. A phone number can be changed later through the user profile flow. `phoneVerified` should remain `false` until a future phone-verification flow exists.
+> **User identifier rule:** email is required, and email verification is required before login. Phone is optional, unique when present, and may be used as a login identifier.
 
 ---
 
@@ -59,11 +62,8 @@ Additional rules:
 
 * A missing phone is stored as `NULL`.
 
-* Phone numbers are not verified by registration.
-
 * A newly registered account always starts with `emailVerified = false`.
 
-* `phoneVerified` is always `false` until a future phone-verification flow exists.
 
 * The password is hashed before being stored.
 
@@ -71,44 +71,83 @@ Additional rules:
 
 ### Registration Processing
 
-    Request  ↓Validate request body  ↓Normalize email  ↓Normalize phone if supplied  ↓Check email uniqueness  ↓Check phone uniqueness  ↓Hash password  ↓Create unverified user  ↓Initialize email-verification flow  ↓Return created user
+    Request
+    ↓ Validate request body
+    ↓ Normalize email
+    ↓ Normalize phone if supplied
+    ↓ Check email uniqueness
+    ↓ Check phone uniqueness
+    ↓ Hash password
+    ↓ Create unverified user
+    ↓ Return created user
 
-Registration does not create an authenticated session and does not return an access token or refresh token.
+Registration does not send a verification email, generate a verification code, or create an authenticated session. It does not return an access token or refresh token. The client may call `POST /api/v1/auth/verify-email/request` when the user chooses to request a verification email.
 
-### Success Response — 201 Created
+### Success Response — `201 Created`
 
-    {  
-    "message": "Account created successfully. Please verify your email.",  
-    "user": {    
-        "id": "123",    
-        "name": "Shivam Gaikwad",    
-        "email": "shivam@example.com",    
-        "emailVerified": false,    
-        "phone": "+919876543210",    
-        "phoneVerified": false  
-    }}
+Successful responses use the existing `ApiResponse<T>` envelope defined in `src/types/apiResponse.ts`.
 
-`id` is the PostgreSQL `BIGINT` user ID serialized as a string for JSON compatibility.
+```json
+{
+  "success": true,
+  "message": "Account created successfully. Please verify your email.",
+  "data": {
+    "user": {
+      "id": "123",
+      "name": "Shivam Gaikwad",
+      "email": "shivam@example.com",
+      "emailVerified": false,
+      "phone": "+919876543210"
+    }
+  }
+}
+```
 
-When no phone number is supplied:
-    {  "message": "Account created successfully. Please verify your email.",  "user": {    "id": "123",    "name": "Shivam Gaikwad",    "email": "shivam@example.com",    "emailVerified": false,    "phone": null,    "phoneVerified": false  }}
+`id` is the PostgreSQL `BIGINT` user ID serialized as a string for JSON compatibility. Do not use a prefixed identifier such as `usr_123` unless the ID scheme is deliberately changed.
+
+When no phone number is supplied, `data.user.phone` is `null`. The response must not include a password, password hash, verification code, or verification secret.
 
 ### Error Responses
 
-#### 400 Bad Request
+#### `400 Bad Request`
 
 The request body is syntactically valid JSON but fails validation.
-    {  "error": {    "code": "VALIDATION_ERROR",    "message": "Invalid request data.",    "fields": {      "email": "Invalid email address.",      "password": "Password must contain at least 8 characters."    }  }}
 
-#### 409 Conflict — Email
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid request data."
+  }
+}
+```
 
-    {  "error": {    "code": "EMAIL_ALREADY_EXISTS",    "message": "An account with this email already exists."  }}
+#### `409 Conflict` — Email
 
-#### 409 Conflict — Phone
+```json
+{
+  "success": false,
+  "error": {
+    "code": "EMAIL_ALREADY_EXISTS",
+    "message": "An account with this email already exists."
+  }
+}
+```
 
-    {  "error": {    "code": "PHONE_ALREADY_EXISTS",    "message": "An account with this phone number already exists."  }}
+#### `409 Conflict` — Phone
 
-#### 429 Too Many Requests
+```json
+{
+  "success": false,
+  "error": {
+    "code": "PHONE_ALREADY_EXISTS",
+    "message": "An account with this phone number already exists."
+  }
+}
+```
+
+#### `429 Too Many Requests`
 
 Registration attempts have exceeded the allowed rate limit.
 
@@ -129,7 +168,6 @@ Registration attempts have exceeded the allowed rate limit.
     User created    
     ↓
     emailVerified = false
-    phoneVerified = false    
     ↓
     No auth session    
     ↓
@@ -181,18 +219,22 @@ A phone-number login is also valid:
 
 ```json
 {
-  "message": "Login successful.",
-  "user": {
-    "id": "usr_123",
-    "name": "Shivam Gaikwad",
-    "email": "shivam@example.com",
-    "emailVerified": true,
-    "phone": "+919876543210",
-    "phoneVerified": false
-  },
-  "accessToken": "<access-token>"
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "accessToken": "<access-token>",
+    "user": {
+      "id": "123",
+      "name": "Shivam Gaikwad",
+      "email": "shivam@example.com",
+      "emailVerified": true,
+      "phone": "+919876543210"
+    }
+  }
 }
 ```
+
+The refresh token is set in an HttpOnly cookie and is not included in the JSON response.
 
 ### Error Responses
 
@@ -206,6 +248,7 @@ The credentials are invalid.
 
 ```json
 {
+  "success": false,
   "error": {
     "code": "INVALID_CREDENTIALS",
     "message": "Invalid identifier or password."
@@ -221,6 +264,7 @@ Use this only when the credentials are valid but the account is not currently al
 
 ```json
 {
+  "success": false,
   "error": {
     "code": "EMAIL_NOT_VERIFIED",
     "message": "Please verify your email before logging in."
@@ -243,7 +287,71 @@ Too many login attempts.
 
 ---
 
-## 3. POST /auth/logout
+## 3. POST /auth/refresh
+
+Rotates the refresh token and returns a new access token.
+
+### Headers
+
+```http
+Content-Type: application/json
+```
+
+### Cookies
+
+The request must include the `refreshToken` HttpOnly cookie set by login or a previous refresh. The refresh token is not sent in the JSON body.
+
+### Query Parameters
+
+None.
+
+### Request Body
+
+None.
+
+### Success Response — `200 OK`
+
+```json
+{
+  "success": true,
+  "message": "Tokens refreshed successfully",
+  "data": {
+    "accessToken": "<new-access-token>"
+  }
+}
+```
+
+The server replaces the refresh-token cookie with the rotated token. The raw refresh token is not returned in the response body.
+
+### Error Responses
+
+#### `401 Unauthorized`
+
+The refresh token is missing, invalid, expired, revoked, or has already been rotated.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_REFRESH_TOKEN",
+    "message": "Invalid refresh token"
+  }
+}
+```
+
+#### `429 Too Many Requests`
+
+Too many refresh attempts.
+
+### Why these status codes?
+
+- **200** because a new access token was issued.
+- **401** because the supplied refresh credential cannot establish a valid session.
+- **429** limits abuse of the token-refresh endpoint.
+
+---
+
+## 4. POST /auth/logout
 
 Terminates the current authenticated session.
 
@@ -284,7 +392,7 @@ No valid authentication was supplied when the backend requires an authenticated 
 
 ---
 
-## 4. GET /auth/me
+## 5. GET /auth/me
 
 Returns the currently authenticated user's account information.
 
@@ -310,16 +418,21 @@ None.
 
 ```json
 {
-  "user": {
-    "id": "usr_123",
-    "name": "Shivam Gaikwad",
-    "email": "shivam@example.com",
-    "emailVerified": true,
-    "phone": "+919876543210",
-    "phoneVerified": false
+  "success": true,
+  "message": "Current user retrieved successfully",
+  "data": {
+    "user": {
+      "id": "123",
+      "name": "Shivam Gaikwad",
+      "email": "shivam@example.com",
+      "emailVerified": true,
+      "phone": "+919876543210"
+    }
   }
 }
 ```
+
+When no phone number is saved, `data.user.phone` is `null`.
 
 ### Error Responses
 
@@ -329,6 +442,7 @@ The request does not contain a valid access token.
 
 ```json
 {
+  "success": false,
   "error": {
     "code": "UNAUTHENTICATED",
     "message": "Authentication required."
@@ -345,9 +459,9 @@ The request does not contain a valid access token.
 
 ---
 
-## 5. POST /auth/verify-email/request
+## 6. POST /auth/verify-email/request
 
-Requests an email verification code for the specified email address.
+Requests an email verification code for the specified email address. This endpoint handles both the initial request and subsequent requests for a replacement code; there is no separate resend endpoint.
 
 ### Headers
 
@@ -357,9 +471,7 @@ Content-Type: application/json
 
 ### Query Parameters
 
-| Parameter | Type   | Required | Description                                             |
-| --------- | ------ | -------- | ------------------------------------------------------- |
-| `email`   | string | Yes      | Email address that should receive the verification code |
+None.
 
 ### Path Parameters
 
@@ -367,19 +479,19 @@ None.
 
 ### Request Body
 
-None.
-
-### Example Request
-
-```http
-POST /api/v1/auth/verify-email/request?email=shivam%40example.com
+```json
+{
+  "email": "shivam@example.com"
+}
 ```
 
-### Success Response — `202 Accepted`
+### Success Response — `200 OK`
 
 ```json
 {
-  "message": "If the email is eligible for verification, a verification code has been sent."
+  "success": true,
+  "message": "If the account is eligible, a verification email will be sent.",
+  "data": null
 }
 ```
 
@@ -387,23 +499,25 @@ POST /api/v1/auth/verify-email/request?email=shivam%40example.com
 
 #### `400 Bad Request`
 
-The email parameter is missing or invalid.
+The request body is missing a valid email address or fails validation.
 
 ```json
 {
+  "success": false,
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "A valid email address is required."
+    "message": "Invalid request data."
   }
 }
 ```
 
 #### `429 Too Many Requests`
 
-Too many verification-code requests were made within the allowed period.
+Too many initial or repeat verification-code requests were made within the allowed period.
 
 ```json
 {
+  "success": false,
   "error": {
     "code": "TOO_MANY_REQUESTS",
     "message": "Too many verification requests. Please try again later."
@@ -413,7 +527,7 @@ Too many verification-code requests were made within the allowed period.
 
 ### Why these status codes?
 
-- **202** because the server has accepted the request and may send the verification email asynchronously.
+- **200** because the backend currently returns a successful response after handling the verification-email request.
 - **400** because the supplied email is invalid input.
 - **429** because verification-code requests should be rate-limited to prevent abuse and email spam.
 
@@ -421,7 +535,7 @@ Too many verification-code requests were made within the allowed period.
 
 ---
 
-## 6. POST /auth/verify-email
+## 7. POST /auth/verify-email
 
 Verifies a user's email address using the verification code sent to the specified email address.
 
@@ -466,7 +580,9 @@ Content-Type: application/json
 
 ```json
 {
-  "message": "Email verified successfully."
+  "success": true,
+  "message": "Email verified successfully.",
+  "data": null
 }
 ```
 
@@ -478,6 +594,7 @@ The verification code is malformed, invalid, expired, or missing.
 
 ```json
 {
+  "success": false,
   "error": {
     "code": "INVALID_VERIFICATION_CODE",
     "message": "The verification code is invalid or has expired."
@@ -491,6 +608,7 @@ The email is already verified.
 
 ```json
 {
+  "success": false,
   "error": {
     "code": "EMAIL_ALREADY_VERIFIED",
     "message": "Email is already verified."
@@ -504,6 +622,7 @@ Too many verification attempts were made.
 
 ```json
 {
+  "success": false,
   "error": {
     "code": "TOO_MANY_REQUESTS",
     "message": "Too many verification attempts. Please try again later."
@@ -520,83 +639,7 @@ Too many verification attempts were made.
 
 ---
 
-## 7. POST /auth/resend-verification
-
-Requests a new email verification code for the specified email address.
-
-### Headers
-
-```http
-Content-Type: application/json
-```
-
-### Query Parameters
-
-| Parameter | Type   | Required | Description                                                 |
-| --------- | ------ | -------- | ----------------------------------------------------------- |
-| `email`   | string | Yes      | Email address that should receive the new verification code |
-
-### Path Parameters
-
-None.
-
-### Request Body
-
-None.
-
-### Example Request
-
-```http
-POST /api/v1/auth/resend-verification?email=shivam%40example.com
-```
-
-### Success Response — `202 Accepted`
-
-```json
-{
-  "message": "If the email is eligible for verification, a new verification code has been sent."
-}
-```
-
-### Error Responses
-
-#### `400 Bad Request`
-
-The email parameter is missing or invalid.
-
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "A valid email address is required."
-  }
-}
-```
-
-#### `429 Too Many Requests`
-
-The resend limit has been exceeded.
-
-```json
-{
-  "error": {
-    "code": "TOO_MANY_REQUESTS",
-    "message": "Please wait before requesting another verification code."
-  }
-}
-```
-
-### Why these status codes?
-
-- **202** because the request has been accepted and email delivery may happen asynchronously.
-- **400** because the supplied email is invalid input.
-- **429** because repeated resend requests should be rate-limited to prevent abuse and email spam.
-
-> Keep the success response generic rather than revealing whether an account exists for the supplied email.
-
----
-
-## 7. POST /auth/forgot-password
+## 8. POST /auth/forgot-password
 
 Starts the password-reset flow.
 
@@ -626,7 +669,9 @@ None.
 
 ```json
 {
-  "message": "If an account exists for this email, password-reset instructions will be sent."
+  "success": true,
+  "message": "If an account exists for this email, password-reset instructions will be sent.",
+  "data": null
 }
 ```
 
@@ -650,9 +695,9 @@ Too many password-reset requests.
 
 ---
 
-## 8. POST /auth/reset-password
+## 9. POST /auth/reset-password
 
-Changes the user's password using a valid reset token/code.
+Changes the user's password using the email-associated password-reset code.
 
 ### Headers
 
@@ -662,7 +707,9 @@ Content-Type: application/json
 
 ### Query Parameters
 
-None.
+| Parameter | Type   | Required | Description                                      |
+| --------- | ------ | -------- | ------------------------------------------------ |
+| `email`   | string | Yes      | Email address associated with the reset code     |
 
 ### Path Parameters
 
@@ -672,7 +719,21 @@ None.
 
 ```json
 {
-  "token": "<password-reset-token>",
+  "code": "483921",
+  "newPassword": "NewStrongPassword123!"
+}
+```
+
+### Example Request
+
+```http
+POST /api/v1/auth/reset-password?email=shivam%40example.com
+Content-Type: application/json
+```
+
+```json
+{
+  "code": "483921",
   "newPassword": "NewStrongPassword123!"
 }
 ```
@@ -685,16 +746,21 @@ No response body.
 
 #### `400 Bad Request`
 
-The token is invalid/expired or the password fails validation.
+The email is invalid, the reset code is invalid or expired, or the new password fails validation.
+
+For an invalid or expired reset code, the backend returns:
 
 ```json
 {
+  "success": false,
   "error": {
     "code": "INVALID_RESET_TOKEN",
-    "message": "The reset token is invalid or has expired."
+    "message": "Invalid or expired reset code."
   }
 }
 ```
+
+Invalid email or password input is handled by the corresponding validation/error middleware.
 
 #### `429 Too Many Requests`
 
@@ -702,8 +768,8 @@ Too many reset attempts.
 
 ### Why these status codes?
 
-- **204** because the password was changed successfully and there is no need to return a representation of the updated password.
-- **400** is appropriate for an invalid/expired reset token or invalid password input.
+- **204** because the password was changed successfully and the backend returns no response body.
+- **400** is appropriate for invalid email/code input or invalid password data.
 - **429** protects the endpoint from repeated token-guessing or abuse.
 
 ---
@@ -712,9 +778,9 @@ Too many reset attempts.
 
 | Status                  | Meaning                                        | Typical Splitly use                              |
 | ----------------------- | ---------------------------------------------- | ------------------------------------------------ |
-| `200 OK`                | Request succeeded                              | Login, `/me`, email verification                 |
+| `200 OK`                | Request succeeded                              | Login, `/me`, email-verification request and verification |
 | `201 Created`           | New resource created                           | Registration                                     |
-| `202 Accepted`          | Request accepted for processing                | Resend verification, forgot password             |
+| `202 Accepted`          | Request accepted for processing                | Forgot password                                   |
 | `204 No Content`        | Success with no response body                  | Logout, reset password                           |
 | `400 Bad Request`       | Request/input is invalid                       | Validation, invalid/expired codes                |
 | `401 Unauthorized`      | Authentication failed or is missing            | Login credentials, protected endpoints           |
@@ -762,19 +828,19 @@ For protected Splitly resources later, this distinction will become important fo
 
 # Recommended API Error Shape
 
-Keep authentication errors structurally consistent:
+Keep authentication errors structurally consistent with the centralized error middleware:
 
 ```json
 {
+  "success": false,
   "error": {
     "code": "INVALID_CREDENTIALS",
-    "message": "Invalid email or password.",
-    "fields": {}
+    "message": "Invalid email or password."
   }
 }
 ```
 
-For field validation, `fields` can contain field-specific messages. For non-validation errors, omit `fields` or return an empty object—just keep the convention consistent across the API.
+If field-level validation details are added to `AppError` and `error.middleware.ts`, document and return them consistently in this same error envelope rather than introducing a separate response format.
 
 ---
 
@@ -784,7 +850,7 @@ For field validation, `fields` can contain field-specific messages. For non-vali
 2. Use path parameters only for resource identity: `/:groupId`, `/:expenseId`.
 3. Use request bodies for credentials, verification codes, and mutable data; use query parameters for non-secret identifiers such as email when the contract specifies them.
 4. Do not put passwords, verification codes, or password-reset secrets in query parameters.
-5. Do not expose whether an email exists during password reset or resend-verification flows.
+5. Do not expose whether an email exists during password reset or email-verification request flows.
 6. Add `429` handling to authentication endpoints because these endpoints are abuse-sensitive.
 7. Do not return passwords, password hashes, verification codes, or reset tokens in API responses.
 8. Keep the error response shape consistent across all modules, not just authentication.
