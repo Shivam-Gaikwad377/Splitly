@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta
+      name="description"
+      content="Splitly makes shared expenses, group balances, and settlements easier to manage."
+    />
+    <script>
+      (() => {
+        const root = document.documentElement;
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
+
+        let savedTheme = null;
+
+        try {
+          savedTheme = localStorage.getItem("splitly-theme");
+        } catch {
+          // Use the operating system preference if storage is unavailable.
+        }
+
+        const theme =
+          savedTheme === "light" ||
+          savedTheme === "dark" ||
+          savedTheme === "system"
+            ? savedTheme
+            : "system";
+
+        const isDark = theme === "dark" || (theme === "system" && prefersDark);
+
+        root.classList.toggle("dark", isDark);
+        root.style.colorScheme = isDark ? "dark" : "light";
+      })();
+    </script>
+    <title>Splitly - Shared expenses, clear balances</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
