@@ -33,3 +33,36 @@ export async function login(
 
     return response.data.data;
 }
+
+
+
+let refreshAccessTokenPromise: Promise<string> | null = null;
+
+export function refreshAccessToken(): Promise<string> {
+    if (refreshAccessTokenPromise) {
+        return refreshAccessTokenPromise;
+    }
+
+    refreshAccessTokenPromise = apiClient
+        .post<ApiSuccess<{accessToken: string}>>("/auth/refresh")
+        .then((response) => response.data.data.accessToken)
+        .finally(() => {
+            refreshAccessTokenPromise = null;
+        });
+
+    return refreshAccessTokenPromise;
+}
+
+export async function getCurrentUser(
+    accessToken: string,
+): Promise<AuthUser> {
+    const response = await apiClient.get<
+        ApiSuccess<{ user: AuthUser }>
+    >("/auth/me", {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+    });
+
+    return response.data.data.user;
+}

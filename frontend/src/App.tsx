@@ -4,7 +4,45 @@ import { DesignSystemPage } from "@/features/design-system/pages/design-system-p
 import { AppLayout } from "@/layouts/app-layout";
 import { AuthLayout } from "@/layouts/auth-layout";
 import { RoutePlaceholderPage } from "@/pages/route-placeholder-page";
+import type { ReactNode } from "react";
+import { useAuth } from "@/providers/auth-provider";
+function AuthLoadingScreen() {
+  return (
+    <main
+      className="flex min-h-svh items-center justify-center"
+      role="status"
+    >
+      Checking your session...
+    </main>
+  );
+}
+function GuestOnlyRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isInitializing } = useAuth();
 
+  if (isInitializing) {
+    return <AuthLoadingScreen />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isInitializing } = useAuth();
+
+  if (isInitializing) {
+    return <AuthLoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
 function NotFoundPage() {
   return (
     <main className="mx-auto max-w-2xl space-y-5 px-4 py-16 text-foreground">
@@ -44,9 +82,12 @@ export default function App() {
       <Route element={<AuthLayout />}>
         <Route
           path="login"
-          element={<LoginPage />}
+          element={
+            <GuestOnlyRoute>
+              <LoginPage />
+            </GuestOnlyRoute>
+          }
         />
-        
 
         <Route
           path="register"
@@ -90,7 +131,14 @@ export default function App() {
       </Route>
 
       {/* Dashboard shell; authentication protection comes later. */}
-      <Route element={<AppLayout />}>
+      {/* Protected application routes */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route
           path="dashboard"
           element={
