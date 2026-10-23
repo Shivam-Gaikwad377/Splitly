@@ -13,7 +13,7 @@ import {
     Mail,
     ShieldCheck,
 } from "lucide-react";
-import { useAuth } from "@/providers/auth-provider";
+import { useAuth } from "@/hooks/use-auth";
 import {
     Card,
     CardContent,

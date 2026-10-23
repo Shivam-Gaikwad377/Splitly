@@ -5,10 +5,11 @@ import { AppLayout } from "@/layouts/app-layout";
 import { AuthLayout } from "@/layouts/auth-layout";
 import { RoutePlaceholderPage } from "@/pages/route-placeholder-page";
 import type { ReactNode } from "react";
-import { useAuth } from "@/providers/auth-provider";
+import { useAuth } from "@/hooks/use-auth";
 import { RegisterPage } from "@/features/auth/pages/registration-page";
 import { EmailVerificationPage } from "@/features/auth/pages/verify-email-page";
-
+import { ForgotPasswordPage } from "./features/auth/pages/forgot-password-page";
+import { ResetPasswordPage } from "./features/auth/pages/reset-password-page";
 function AuthLoadingScreen() {
   return (
     <main
@@ -104,29 +105,21 @@ export default function App() {
         <Route
           path="verify-email"
           element={
-            
-              <EmailVerificationPage />
-         
+
+            <EmailVerificationPage />
+
           }
         />
 
         <Route
           path="forgot-password"
-          element={
-            <RoutePlaceholderPage
-              title="Reset your password"
-              description="Request password-reset instructions for your account."
-            />
-          }
+          element={<ForgotPasswordPage />}
         />
 
         <Route
           path="reset-password"
           element={
-            <RoutePlaceholderPage
-              title="Choose a new password"
-              description="Complete your password reset using your verification code."
-            />
+            <ResetPasswordPage /> 
           }
         />
       </Route>

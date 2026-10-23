@@ -108,3 +108,31 @@ export async function verifyEmail(
 }
 
 
+export async function requestPasswordReset(
+    email: string,
+): Promise<void> {
+    await apiClient.post<ApiSuccess<null>>(
+        "/auth/forgot-password",
+        { email: email.trim().toLowerCase() },
+    );
+}
+
+export interface ResetPasswordCredentials {
+    email: string;
+    code: string;
+    newPassword: string;
+}
+
+export async function resetPassword(
+    credentials: ResetPasswordCredentials,
+): Promise<void> {
+    const { email, code, newPassword } = credentials;
+
+    await apiClient.post<void>(
+        `/auth/reset-password?email=${encodeURIComponent(
+            email.trim().toLowerCase(),
+        )}`,
+        { code, newPassword },
+    );
+}
+
