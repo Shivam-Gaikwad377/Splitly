@@ -44,7 +44,7 @@ export function refreshAccessToken(): Promise<string> {
     }
 
     refreshAccessTokenPromise = apiClient
-        .post<ApiSuccess<{accessToken: string}>>("/auth/refresh")
+        .post<ApiSuccess<{ accessToken: string }>>("/auth/refresh")
         .then((response) => response.data.data.accessToken)
         .finally(() => {
             refreshAccessTokenPromise = null;
@@ -84,3 +84,27 @@ export async function register(
 
     return response.data.data.user;
 }
+
+
+export async function requestEmailVerification(
+    email: string,
+): Promise<void> {
+    await apiClient.post<ApiSuccess<null>>(
+        "/auth/verify-email/request",
+        { email },
+    );
+}
+
+export async function verifyEmail(
+    email: string,
+    code: string,
+): Promise<void> {
+    const query = new URLSearchParams({ email });
+
+    await apiClient.post<ApiSuccess<null>>(
+        `/auth/verify-email?${query.toString()}`,
+        { code },
+    );
+}
+
+

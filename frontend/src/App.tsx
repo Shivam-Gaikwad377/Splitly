@@ -7,6 +7,7 @@ import { RoutePlaceholderPage } from "@/pages/route-placeholder-page";
 import type { ReactNode } from "react";
 import { useAuth } from "@/providers/auth-provider";
 import { RegisterPage } from "@/features/auth/pages/registration-page";
+import { EmailVerificationPage } from "@/features/auth/pages/verify-email-page";
 
 function AuthLoadingScreen() {
   return (
@@ -103,10 +104,9 @@ export default function App() {
         <Route
           path="verify-email"
           element={
-            <RoutePlaceholderPage
-              title="Verify your email"
-              description="Request and verify your email confirmation code."
-            />
+            
+              <EmailVerificationPage />
+         
           }
         />
 
