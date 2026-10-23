@@ -6,6 +6,8 @@ import { AuthLayout } from "@/layouts/auth-layout";
 import { RoutePlaceholderPage } from "@/pages/route-placeholder-page";
 import type { ReactNode } from "react";
 import { useAuth } from "@/providers/auth-provider";
+import { RegisterPage } from "@/features/auth/pages/registration-page";
+
 function AuthLoadingScreen() {
   return (
     <main
@@ -92,10 +94,9 @@ export default function App() {
         <Route
           path="register"
           element={
-            <RoutePlaceholderPage
-              title="Create your account"
-              description="Create a Splitly account to start managing shared expenses."
-            />
+            <GuestOnlyRoute>
+              <RegisterPage />
+            </GuestOnlyRoute>
           }
         />
 

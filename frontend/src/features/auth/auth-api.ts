@@ -66,3 +66,21 @@ export async function getCurrentUser(
 
     return response.data.data.user;
 }
+
+
+export interface RegisterCredentials {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+}
+
+export async function register(
+    credentials: RegisterCredentials,
+): Promise<AuthUser> {
+    const response = await apiClient.post<
+        ApiSuccess<{ user: AuthUser }>
+    >("/auth/register", credentials);
+
+    return response.data.data.user;
+}
