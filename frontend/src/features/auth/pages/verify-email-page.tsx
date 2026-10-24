@@ -232,9 +232,9 @@ export function EmailVerificationPage() {
         <section className="mx-auto w-full max-w-md space-y-5">
             <header className="space-y-3 text-center">
                 <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
-                    {step === "request" ? (
+                    {visibleStep === "request" ? (
                         <Mail className="size-7" aria-hidden="true" />
-                    ) : step === "code" ? (
+                    ) : visibleStep === "code" ? (
                         <KeyRound className="size-7" aria-hidden="true" />
                     ) : (
                         <CheckCircle2 className="size-7" aria-hidden="true" />
@@ -246,15 +246,15 @@ export function EmailVerificationPage() {
                 </p>
 
                 <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                    {step === "verified"
+                    {visibleStep === "verified"
                         ? "You're verified"
                         : "Verify your email"}
                 </h1>
 
                 <p className="mx-auto max-w-sm text-sm leading-6 text-muted-foreground">
-                    {step === "request"
+                    {visibleStep === "request"
                         ? "Confirm your email address to finish setting up your Splitly account."
-                        : step === "code"
+                        : visibleStep === "code"
                           ? "Enter the code associated with your email address."
                           : "Your email verification is complete. You can now sign in to Splitly."}
                 </p>
@@ -262,7 +262,7 @@ export function EmailVerificationPage() {
 
             {step !== "verified" && (
                 <VerificationProgress
-                    activeStep={step === "request" ? 1 : 2}
+                    activeStep={visibleStep === "request" ? 1 : 2}
                 />
             )}
 
