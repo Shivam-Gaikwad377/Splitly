@@ -83,6 +83,7 @@ export function RegisterPage() {
 
     const [formError, setFormError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const {
         register: registerField,
@@ -387,26 +388,57 @@ export function RegisterPage() {
                             <Label htmlFor="confirmPassword">
                                 Confirm password
                             </Label>
-
-                            <Input
-                                id="confirmPassword"
-                                type="password"
-                                autoComplete="new-password"
-                                aria-invalid={Boolean(errors.confirmPassword)}
-                                aria-describedby={
-                                    errors.confirmPassword
-                                        ? "confirm-password-error"
-                                        : undefined
-                                }
-                                disabled={isSubmitting}
-                                className="h-11 rounded-lg"
-                                {...registerField("confirmPassword", {
-                                    required: "Confirm your password.",
-                                    validate: (value) =>
-                                        value === watch("password") ||
-                                        "Passwords do not match.",
-                                })}
-                            />
+                            <div className="relative">
+                                <LockKeyhole
+                                    className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                                    aria-hidden="true"
+                                />
+                                <Input
+                                    id="confirmPassword"
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    autoComplete="new-password"
+                                    aria-invalid={Boolean(errors.confirmPassword)}
+                                    aria-describedby={
+                                        errors.confirmPassword
+                                            ? "confirm-password-error"
+                                            : undefined
+                                    }
+                                    disabled={isSubmitting}
+                                    className="h-11 rounded-lg pl-10 pr-11"
+                                    {...registerField("confirmPassword", {
+                                        required: "Confirm your password.",
+                                        validate: (value) =>
+                                            value === watch("password") ||
+                                            "Passwords do not match.",
+                                    })}
+                                />
+                                <button
+                                    type="button"
+                                    aria-label={
+                                        showConfirmPassword
+                                            ? "Hide password"
+                                            : "Show password"
+                                    }
+                                    aria-pressed={showConfirmPassword}
+                                    disabled={isSubmitting}
+                                    onClick={() =>
+                                        setShowConfirmPassword((visible) => !visible)
+                                    }
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
+                                >
+                                    {showConfirmPassword ? (
+                                        <EyeOff
+                                            className="size-4"
+                                            aria-hidden="true"
+                                        />
+                                    ) : (
+                                        <Eye
+                                            className="size-4"
+                                            aria-hidden="true"
+                                        />
+                                    )}
+                                </button>
+                            </div>
 
                             {errors.confirmPassword && (
                                 <p
