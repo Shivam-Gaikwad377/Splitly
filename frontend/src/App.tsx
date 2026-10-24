@@ -4,7 +4,49 @@ import { DesignSystemPage } from "@/features/design-system/pages/design-system-p
 import { AppLayout } from "@/layouts/app-layout";
 import { AuthLayout } from "@/layouts/auth-layout";
 import { RoutePlaceholderPage } from "@/pages/route-placeholder-page";
+import type { ReactNode } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { RegisterPage } from "@/features/auth/pages/registration-page";
+import { EmailVerificationPage } from "@/features/auth/pages/verify-email-page";
+import { ForgotPasswordPage } from "./features/auth/pages/forgot-password-page";
+import { ResetPasswordPage } from "./features/auth/pages/reset-password-page";
+function AuthLoadingScreen() {
+  return (
+    <main
+      className="flex min-h-svh items-center justify-center"
+      role="status"
+    >
+      Checking your session...
+    </main>
+  );
+}
+function GuestOnlyRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isInitializing } = useAuth();
 
+  if (isInitializing) {
+    return <AuthLoadingScreen />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isInitializing } = useAuth();
+
+  if (isInitializing) {
+    return <AuthLoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
 function NotFoundPage() {
   return (
     <main className="mx-auto max-w-2xl space-y-5 px-4 py-16 text-foreground">
@@ -44,53 +86,53 @@ export default function App() {
       <Route element={<AuthLayout />}>
         <Route
           path="login"
-          element={<LoginPage />}
+          element={
+            <GuestOnlyRoute>
+              <LoginPage />
+            </GuestOnlyRoute>
+          }
         />
-        
 
         <Route
           path="register"
           element={
-            <RoutePlaceholderPage
-              title="Create your account"
-              description="Create a Splitly account to start managing shared expenses."
-            />
+            <GuestOnlyRoute>
+              <RegisterPage />
+            </GuestOnlyRoute>
           }
         />
 
         <Route
           path="verify-email"
           element={
-            <RoutePlaceholderPage
-              title="Verify your email"
-              description="Request and verify your email confirmation code."
-            />
+
+            <EmailVerificationPage />
+
           }
         />
 
         <Route
           path="forgot-password"
-          element={
-            <RoutePlaceholderPage
-              title="Reset your password"
-              description="Request password-reset instructions for your account."
-            />
-          }
+          element={<ForgotPasswordPage />}
         />
 
         <Route
           path="reset-password"
           element={
-            <RoutePlaceholderPage
-              title="Choose a new password"
-              description="Complete your password reset using your verification code."
-            />
+            <ResetPasswordPage />
           }
         />
       </Route>
 
       {/* Dashboard shell; authentication protection comes later. */}
-      <Route element={<AppLayout />}>
+      {/* Protected application routes */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route
           path="dashboard"
           element={

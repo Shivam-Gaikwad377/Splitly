@@ -1,41 +1,89 @@
 import {
-    createContext,
-    useContext,
+    useEffect,
     useState,
     type ReactNode,
 } from "react";
 
 import {
+    getCurrentUser,
     login,
+    refreshAccessToken,
     type AuthUser,
     type LoginCredentials,
+    logout
 } from "@/features/auth/auth-api";
+import {
+    AuthContext,
+    type AuthContextValue,
+} from "./auth-context";
 
-interface AuthContextValue {
-    accessToken: string | null;
-    user: AuthUser | null;
-    isAuthenticated: boolean;
-    signIn: (credentials: LoginCredentials) => Promise<void>;
-}
 
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+    const [isInitializing, setIsInitializing] = useState(true);
+
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [user, setUser] = useState<AuthUser | null>(null);
+    useEffect(() => {
+        let cancelled = false;
+
+        async function restoreSession(): Promise<void> {
+            try {
+                const token = await refreshAccessToken();
+
+                if (cancelled) return;
+
+                const currentUser = await getCurrentUser(token);
+
+                if (cancelled) return;
+
+                setAccessToken(token);
+                setUser(currentUser);
+            } catch {
+                if (!cancelled) {
+                    setAccessToken(null);
+                    setUser(null);
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsInitializing(false);
+                }
+            }
+        }
+
+        void restoreSession();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     async function signIn(credentials: LoginCredentials): Promise<void> {
         const result = await login(credentials);
 
         setAccessToken(result.accessToken);
         setUser(result.user);
+        setIsInitializing(false);
+    }
+    async function signOut(): Promise<void> {
+        if (accessToken === null) {
+            return;
+        }
+
+        // Revoke the server-side session before clearing local state.
+        await logout(accessToken);
+
+        setAccessToken(null);
+        setUser(null);
     }
 
     const value: AuthContextValue = {
         accessToken,
         user,
         isAuthenticated: accessToken !== null && user !== null,
+        isInitializing,
         signIn,
+        signOut
     };
 
     return (
@@ -45,12 +93,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 }
 
-export function useAuth(): AuthContextValue {
-    const context = useContext(AuthContext);
-
-    if (context === null) {
-        throw new Error("useAuth must be used within an AuthProvider");
-    }
-
-    return context;
-}

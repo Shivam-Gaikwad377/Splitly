@@ -33,3 +33,119 @@ export async function login(
 
     return response.data.data;
 }
+
+
+
+let refreshAccessTokenPromise: Promise<string> | null = null;
+
+export function refreshAccessToken(): Promise<string> {
+    if (refreshAccessTokenPromise) {
+        return refreshAccessTokenPromise;
+    }
+
+    refreshAccessTokenPromise = apiClient
+        .post<ApiSuccess<{ accessToken: string }>>("/auth/refresh")
+        .then((response) => response.data.data.accessToken)
+        .finally(() => {
+            refreshAccessTokenPromise = null;
+        });
+
+    return refreshAccessTokenPromise;
+}
+
+export async function getCurrentUser(
+    accessToken: string,
+): Promise<AuthUser> {
+    const response = await apiClient.get<
+        ApiSuccess<{ user: AuthUser }>
+    >("/auth/me", {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+    });
+
+    return response.data.data.user;
+}
+
+
+export interface RegisterCredentials {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+}
+
+export async function register(
+    credentials: RegisterCredentials,
+): Promise<AuthUser> {
+    const response = await apiClient.post<
+        ApiSuccess<{ user: AuthUser }>
+    >("/auth/register", credentials);
+
+    return response.data.data.user;
+}
+
+
+export async function requestEmailVerification(
+    email: string,
+): Promise<void> {
+    await apiClient.post<ApiSuccess<null>>(
+        "/auth/verify-email/request",
+        { email },
+    );
+}
+
+export async function verifyEmail(
+    email: string,
+    code: string,
+): Promise<void> {
+    const query = new URLSearchParams({ email });
+
+    await apiClient.post<ApiSuccess<null>>(
+        `/auth/verify-email?${query.toString()}`,
+        { code },
+    );
+}
+
+
+export async function requestPasswordReset(
+    email: string,
+): Promise<void> {
+    await apiClient.post<ApiSuccess<null>>(
+        "/auth/forgot-password",
+        { email: email.trim().toLowerCase() },
+    );
+}
+
+export interface ResetPasswordCredentials {
+    email: string;
+    code: string;
+    newPassword: string;
+}
+
+export async function resetPassword(
+    credentials: ResetPasswordCredentials,
+): Promise<void> {
+    const { email, code, newPassword } = credentials;
+
+    await apiClient.post<void>(
+        `/auth/reset-password?email=${encodeURIComponent(
+            email.trim().toLowerCase(),
+        )}`,
+        { code, newPassword },
+    );
+}
+
+export async function logout(
+    accessToken: string,
+): Promise<void> {
+    await apiClient.post<void>(
+        "/auth/logout",
+        undefined,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        },
+    );
+}
