@@ -10,6 +10,7 @@ import {
     refreshAccessToken,
     type AuthUser,
     type LoginCredentials,
+    logout
 } from "@/features/auth/auth-api";
 import {
     AuthContext,
@@ -25,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null);
     useEffect(() => {
         let cancelled = false;
-        
+
         async function restoreSession(): Promise<void> {
             try {
                 const token = await refreshAccessToken();
@@ -64,6 +65,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(result.user);
         setIsInitializing(false);
     }
+    async function signOut(): Promise<void> {
+        if (accessToken === null) {
+            return;
+        }
+
+        // Revoke the server-side session before clearing local state.
+        await logout(accessToken);
+
+        setAccessToken(null);
+        setUser(null);
+    }
 
     const value: AuthContextValue = {
         accessToken,
@@ -71,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: accessToken !== null && user !== null,
         isInitializing,
         signIn,
+        signOut
     };
 
     return (

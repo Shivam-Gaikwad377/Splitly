@@ -136,3 +136,16 @@ export async function resetPassword(
     );
 }
 
+export async function logout(
+    accessToken: string,
+): Promise<void> {
+    await apiClient.post<void>(
+        "/auth/logout",
+        undefined,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        },
+    );
+}

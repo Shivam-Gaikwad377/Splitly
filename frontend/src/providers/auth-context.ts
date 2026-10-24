@@ -11,6 +11,7 @@ export interface AuthContextValue {
     isAuthenticated: boolean;
     isInitializing: boolean;
     signIn: (credentials: LoginCredentials) => Promise<void>;
+    signOut: () => Promise<void>;
 }
 
 export const AuthContext =
