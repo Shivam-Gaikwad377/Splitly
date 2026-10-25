@@ -29,6 +29,7 @@ import {
 } from '../../utils/auth/emailVerificationCode'
 import { env } from '../../config/env';
 import { parsePhoneNumberFromString } from "libphonenumber-js/max";
+import { UserProfile } from '../../types/user';
 function isPostgresUniqueViolation(
     error: unknown
 ): error is { code: "23505"; constraint?: string } {
@@ -102,7 +103,7 @@ export async function login(identifier: string, password: string) {
 
     // Generate an access token
     const accessToken = signAccessToken(user.id, authSession.id);
-    const loggedInUser = {
+    const loggedInUser : UserProfile = {
         id: user.id.toString() as string,
         email: user.email as string,
         name: user.name as string,
@@ -501,7 +502,7 @@ export async function resetPassword(
     }
 }
 
-export async function getCurrentUser(userId: string) {
+export async function getCurrentUser(userId: string): Promise<UserProfile> {
     const user = await findUserById(userId);
 
     if (!user) {

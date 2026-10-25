@@ -14,7 +14,7 @@ export const loginSchema = z
     })
     .strict();
 export type LoginInput = z.infer<typeof loginSchema>;
-const phoneSchema = z
+export const phoneSchema = z
     .string({ error: "Invalid phone number." })
     .trim()
     .max(40, "Phone number is too long.")

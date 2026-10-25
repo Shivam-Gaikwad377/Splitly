@@ -5,17 +5,11 @@ import { ApiResponse } from "../../types/apiResponse";
 import { env } from "../../config/env"
 import { sendVerificationEmail, sendPasswordResetEmail } from "../../utils/emails/brevoEmail"
 import { AppError } from "../../utils/app-error";
-type User = {
-    id: string;
-    name: string;
-    email: string;
-    phone: string | null;
-    emailVerified: boolean;
-}
+import { UserProfile } from "../../types/user";
 
 type LoginResponse = {
     accessToken: string;
-    user: User;
+    user: UserProfile;
 }
 export async function loginController(
     req: Request,
@@ -96,7 +90,7 @@ export async function registerController(
     );
 
     const response: ApiResponse<{
-        user: User;
+        user: UserProfile;
     }> = {
         success: true,
         message: "Account created successfully. Please verify your email.",
@@ -222,7 +216,7 @@ export async function getCurrentUserController(
         String(req.user.userId)
     );
 
-    const response: ApiResponse<{ user: User }> = {
+    const response: ApiResponse<{ user: UserProfile }> = {
         success: true,
         message: "Current user retrieved successfully",
         data: {
