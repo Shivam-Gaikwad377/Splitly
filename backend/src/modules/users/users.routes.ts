@@ -1,7 +1,7 @@
-import { updateMyProfileController } from "./user.controller";
+import { updateMyProfileController } from "./users.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { validateBody } from "../../middleware/validation.middleware";
-import { updateProfileSchema } from "./user.validation";
+import { updateProfileSchema } from "./users.validation";
 import { Router } from "express";
 
 const router = Router();

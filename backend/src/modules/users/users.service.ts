@@ -1,4 +1,4 @@
-import { updateUserProfile } from "./user.repository";
+import { updateUserProfile } from "./users.repository";
 import { AppError } from "../../utils/app-error";
 
 function isPostgresUniqueViolation(

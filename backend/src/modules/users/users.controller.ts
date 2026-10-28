@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { updateUserProfileService } from "./user.service";
+import { updateUserProfileService } from "./users.service";
 import { ApiResponse } from "../../types/apiResponse";
 import { UserProfile } from "../../types/user";
 
