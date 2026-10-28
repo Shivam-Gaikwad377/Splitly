@@ -1,4 +1,4 @@
-import { updateUserProfile } from "./users.repository";
+import { deleteUserAccount, updateUserProfile } from "./users.repository";
 import { AppError } from "../../utils/app-error";
 
 function isPostgresUniqueViolation(
@@ -58,5 +58,19 @@ export async function updateUserProfileService(
         }
 
         throw error;
+    }
+}
+
+export async function deleteUserAccountService(
+    userId: string
+): Promise<void> {
+    const deletedUserId = await deleteUserAccount(userId);
+
+    if (!deletedUserId) {
+        throw new AppError(
+            "User not found.",
+            404,
+            "USER_NOT_FOUND"
+        );
     }
 }
