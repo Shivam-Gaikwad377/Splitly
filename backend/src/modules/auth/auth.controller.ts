@@ -6,7 +6,11 @@ import { env } from "../../config/env"
 import { sendVerificationEmail, sendPasswordResetEmail } from "../../utils/emails/brevoEmail"
 import { AppError } from "../../utils/app-error";
 import { UserProfile } from "../../types/user";
-
+import {
+    REFRESH_TOKEN_COOKIE_NAME,
+    getRefreshTokenCookieOptions,
+    getClearRefreshTokenCookieOptions,
+} from "../../utils/auth/refresh-cookie";
 type LoginResponse = {
     accessToken: string;
     user: UserProfile;
@@ -19,12 +23,11 @@ export async function loginController(
 
     const result = await login(identifier, password);
 
-    res.cookie("refreshToken", result.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie(
+        REFRESH_TOKEN_COOKIE_NAME,
+        result.refreshToken,
+        getRefreshTokenCookieOptions()
+    );
     const response: ApiResponse<LoginResponse> = {
         success: true,
         message: "Login successful",
@@ -43,12 +46,11 @@ export async function refreshTokenController(
     const refreshToken = req.cookies?.refreshToken;
     const newTokens = await refreshTokenService(refreshToken);
 
-    res.cookie("refreshToken", newTokens.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie(
+        REFRESH_TOKEN_COOKIE_NAME,
+        newTokens.refreshToken,
+        getRefreshTokenCookieOptions()
+    );
 
     const response: ApiResponse<{ accessToken: string }> = {
         success: true,
@@ -68,11 +70,10 @@ export async function logoutController(req: Request, res: Response) {
 
 
 
-    res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-    });
+    res.clearCookie(
+        REFRESH_TOKEN_COOKIE_NAME,
+        getClearRefreshTokenCookieOptions()
+    );
     res.status(204).send();
 }
 
@@ -226,6 +227,7 @@ export async function getCurrentUserController(
 
     res.status(200).json(response);
 }
+
 
 
 

@@ -8,6 +8,7 @@ import {
 
 import type { Mock } from "vitest";
 import type { PoolClient, QueryResult } from "pg";
+import { getClearRefreshTokenCookieOptions, REFRESH_TOKEN_COOKIE_NAME } from "../../../src/utils/auth/refresh-cookie";
 
 /**
  * Shared database mock.
@@ -410,6 +411,7 @@ describe("deleteUserAccountController", () => {
         res = {
             status: vi.fn().mockReturnThis(),
             send: vi.fn().mockReturnThis(),
+            clearCookie: vi.fn().mockReturnThis(),
         } as unknown as import("express").Response;
 
         next = vi.fn() as unknown as import("express").NextFunction;
@@ -422,15 +424,22 @@ describe("deleteUserAccountController", () => {
 
         await deleteUserAccountController(req, res, next);
 
-        expect(deleteUserAccountService).toHaveBeenCalledTimes(1);
-        expect(deleteUserAccountService).toHaveBeenCalledWith("123");
+        expect(res.clearCookie).toHaveBeenCalledTimes(1);
 
-        // The controller must ignore user IDs from the body and params.
-        expect(deleteUserAccountService).not.toHaveBeenCalledWith("999");
+        expect(res.clearCookie).toHaveBeenCalledWith(
+            REFRESH_TOKEN_COOKIE_NAME,
+            getClearRefreshTokenCookieOptions()
+        );
 
         expect(res.status).toHaveBeenCalledWith(204);
         expect(res.send).toHaveBeenCalledTimes(1);
-        expect(next).not.toHaveBeenCalled();
+
+        // Cookie clearing must happen after the deletion service succeeds.
+        expect(
+            vi.mocked(deleteUserAccountService).mock.invocationCallOrder[0]
+        ).toBeLessThan(
+            vi.mocked(res.clearCookie).mock.invocationCallOrder[0]
+        );
     });
 
     it("should forward service errors to Express error handling", async () => {
@@ -447,5 +456,9 @@ describe("deleteUserAccountController", () => {
 
         expect(res.status).not.toHaveBeenCalled();
         expect(res.send).not.toHaveBeenCalled();
+        expect(res.clearCookie).not.toHaveBeenCalled();
+        expect(res.status).not.toHaveBeenCalled();
+        expect(res.send).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalledWith(serviceError);
     });
 });

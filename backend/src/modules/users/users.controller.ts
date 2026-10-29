@@ -25,6 +25,8 @@ export async function updateMyProfileController(
 
 
 import { deleteUserAccountService } from "./users.service";
+import { getClearRefreshTokenCookieOptions, REFRESH_TOKEN_COOKIE_NAME } from "../../utils/auth/refresh-cookie";
+
 
 export async function deleteUserAccountController(
     req: Request,
@@ -34,10 +36,18 @@ export async function deleteUserAccountController(
     try {
         const userId = String(req.user.userId);
 
+        // Wait for the service and its database transaction to complete.
         await deleteUserAccountService(userId);
+
+        // Clear the browser cookie only after successful deletion.
+        res.clearCookie(
+            REFRESH_TOKEN_COOKIE_NAME,
+            getClearRefreshTokenCookieOptions()
+        );
 
         res.status(204).send();
     } catch (error) {
+        // Failed deletion must not clear the cookie.
         next(error);
     }
 }
